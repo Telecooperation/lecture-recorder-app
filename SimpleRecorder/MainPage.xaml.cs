@@ -66,7 +66,7 @@ namespace SimpleRecorder
             QualityComboBox.ItemsSource = names;
             QualityComboBox.SelectedIndex = names.IndexOf(settings.Quality.ToString());
 
-            var frameRates = new List<string> { "30fps", "60fps" };
+            var frameRates = new List<string> { "15fps", "30fps", "60fps" };
             FrameRateComboBox.ItemsSource = frameRates;
             FrameRateComboBox.SelectedIndex = frameRates.IndexOf($"{settings.FrameRate}fps");
 
@@ -168,7 +168,10 @@ namespace SimpleRecorder
                 using (_screenEncoder = new Encoder(_screenDevice, item))
                 {
                     // webcam recording
-                    await _webcamMediaRecording.StartAsync();
+                    if (_webcamMediaCapture != null)
+                    {
+                        await _webcamMediaRecording.StartAsync();
+                    }
 
                     // screen recording
                     await _screenEncoder.EncodeAsync(
@@ -401,9 +404,9 @@ namespace SimpleRecorder
 
         private async void WebcamDeviceComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            var selected = WebcamDeviceComboBox.SelectedItem as ComboBoxItem;
+            var selectedItem = WebcamDeviceComboBox.SelectedItem as ComboBoxItem;
 
-            await InitWebcamAsync(selected.Tag.ToString());
+            await InitWebcamAsync(selectedItem.Tag.ToString());
             PopulateStreamPropertiesUI(MediaStreamType.VideoRecord, WebcamComboBox, true);
         }
 
