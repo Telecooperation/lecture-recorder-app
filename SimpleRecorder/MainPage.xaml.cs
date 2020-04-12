@@ -3,37 +3,33 @@ using Newtonsoft.Json;
 using SimpleRecorder.Model;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Windows.ApplicationModel;
 using Windows.ApplicationModel.AppService;
 using Windows.Devices.Enumeration;
-using Windows.Foundation.Collections;
 using Windows.Graphics.Capture;
 using Windows.Graphics.DirectX.Direct3D11;
 using Windows.Media.Capture;
 using Windows.Media.MediaProperties;
 using Windows.Storage;
 using Windows.Storage.Pickers;
-using Windows.System;
 using Windows.UI;
 using Windows.UI.Popups;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
 using Windows.UI.Xaml.Media;
-using Windows.UI.Xaml.Media.Imaging;
 
 namespace SimpleRecorder
 {
     public sealed partial class MainPage : Page
     {
-        private IDirect3DDevice _device;
-        private Encoder _encoder;
+        private IDirect3DDevice _screenDevice;
+        private Encoder _screenEncoder;
 
-        private MediaCapture captureManager;
-        private LowLagMediaRecording _mediaRecording;
+        private MediaCapture _webcamMediaCapture;
+        private LowLagMediaRecording _webcamMediaRecording;
 
         public MainPage()
         {
@@ -52,7 +48,7 @@ namespace SimpleRecorder
             }
 
             // initialize screen recording
-            _device = Direct3D11Helpers.CreateDevice();
+            _screenDevice = Direct3D11Helpers.CreateDevice();
 
             // connect to the powerpoint app service
             App.AppServiceConnected += MainPage_AppServiceConnected;
@@ -83,7 +79,7 @@ namespace SimpleRecorder
         {
             // query all properties of the specified stream type 
             IEnumerable<StreamPropertiesHelper> allStreamProperties =
-                captureManager.VideoDeviceController.GetAvailableMediaStreamProperties(streamType).Select(x => new StreamPropertiesHelper(x));
+                _webcamMediaCapture.VideoDeviceController.GetAvailableMediaStreamProperties(streamType).Select(x => new StreamPropertiesHelper(x));
 
             // order them by resolution then frame rate
             allStreamProperties = allStreamProperties.OrderByDescending(x => x.Height * x.Width).ThenByDescending(x => x.FrameRate);
@@ -103,16 +99,16 @@ namespace SimpleRecorder
 
         private async Task InitWebcamAsync(string deviceId)
         {
-            captureManager = new MediaCapture();
-            captureManager.RecordLimitationExceeded += CaptureManager_RecordLimitationExceeded;
+            _webcamMediaCapture = new MediaCapture();
+            _webcamMediaCapture.RecordLimitationExceeded += CaptureManager_RecordLimitationExceeded;
 
-            await captureManager.InitializeAsync(new MediaCaptureInitializationSettings()
+            await _webcamMediaCapture.InitializeAsync(new MediaCaptureInitializationSettings()
             {
                 VideoDeviceId = deviceId
             });
 
-            WebcamPreview.Source = captureManager;
-            await captureManager.StartPreviewAsync();
+            WebcamPreview.Source = _webcamMediaCapture;
+            await _webcamMediaCapture.StartPreviewAsync();
         }
 
         private async void ToggleButton_Checked(object sender, RoutedEventArgs e)
@@ -165,17 +161,17 @@ namespace SimpleRecorder
             try
             {
                 // start webcam recording
-                _mediaRecording = await captureManager.PrepareLowLagRecordToStorageFileAsync(MediaEncodingProfile.CreateMp4(VideoEncodingQuality.HD720p), tempWebcamFile);
+                _webcamMediaRecording = await _webcamMediaCapture.PrepareLowLagRecordToStorageFileAsync(MediaEncodingProfile.CreateMp4(VideoEncodingQuality.HD720p), tempWebcamFile);
 
                 // kick off the screen encoding parallel
                 using (var stream = await tempScreenFile.OpenAsync(FileAccessMode.ReadWrite))
-                using (_encoder = new Encoder(_device, item))
+                using (_screenEncoder = new Encoder(_screenDevice, item))
                 {
                     // webcam recording
-                    await _mediaRecording.StartAsync();
+                    await _webcamMediaRecording.StartAsync();
 
                     // screen recording
-                    await _encoder.EncodeAsync(
+                    await _screenEncoder.EncodeAsync(
                         stream,
                         width, height, bitrate,
                         frameRate);
@@ -184,7 +180,7 @@ namespace SimpleRecorder
                 MainTextBlock.Foreground = originalBrush;
 
                 // user has finished recording, so stop webcam recording
-                await _mediaRecording.StopAsync();
+                await _webcamMediaRecording.StopAsync();
             }
             catch (Exception ex)
             {
@@ -242,7 +238,7 @@ namespace SimpleRecorder
             // save slide markers
             var recording = new Recording()
             {
-                Slides = _encoder.GetTimestamps()
+                Slides = _screenEncoder.GetTimestamps()
             };
 
             var json = JsonConvert.SerializeObject(recording, Formatting.Indented);
@@ -263,7 +259,7 @@ namespace SimpleRecorder
         private void CaptureManager_RecordLimitationExceeded(MediaCapture sender)
         {
             // stop the recording
-            _encoder?.Dispose();
+            _screenEncoder?.Dispose();
 
             MainTextBlock.Text = "Limit reached (3h)";
         }
@@ -271,7 +267,7 @@ namespace SimpleRecorder
         private void ToggleButton_Unchecked(object sender, RoutedEventArgs e)
         {
             // If the encoder is doing stuff, tell it to stop
-            _encoder?.Dispose();
+            _screenEncoder?.Dispose();
         }
 
         private async Task<StorageFile> PickVideoAsync()
@@ -400,7 +396,7 @@ namespace SimpleRecorder
         {
             var selectedItem = (sender as ComboBox).SelectedItem as ComboBoxItem;
             var encodingProperties = (selectedItem.Tag as StreamPropertiesHelper).EncodingProperties;
-            await captureManager.VideoDeviceController.SetMediaStreamPropertiesAsync(MediaStreamType.VideoRecord, encodingProperties);
+            await _webcamMediaCapture.VideoDeviceController.SetMediaStreamPropertiesAsync(MediaStreamType.VideoRecord, encodingProperties);
         }
 
         private async void WebcamDeviceComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -423,7 +419,7 @@ namespace SimpleRecorder
 
             if (result == "SlideChanged")
             {
-                _encoder?.AddCurrentTimestamp();
+                _screenEncoder?.AddCurrentTimestamp();
             }
             else if (result == "Status")
             {
