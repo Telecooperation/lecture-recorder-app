@@ -56,7 +56,6 @@
                     <TextBlock x:Name="PowerPointRed" FontFamily="Segoe MDL2 Assets" Visibility="Collapsed" FontSize="32" Foreground="Red">&#xE711;</TextBlock>
                 </StackPanel>
             </StackPanel>
-
         </Grid>
 
         <Grid Grid.Column="1">

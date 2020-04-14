@@ -121,7 +121,7 @@ namespace SimpleRecorder
             var useSourceSize = UseCaptureItemSizeCheckBox.IsChecked.Value;
 
             var temp = MediaEncodingProfile.CreateMp4(quality);
-            var bitrate = temp.Video.Bitrate;
+            uint bitrate = 2500000; // temp.Video.Bitrate; // 18 000 000
             var width = temp.Video.Width;
             var height = temp.Video.Height;
 
@@ -161,7 +161,7 @@ namespace SimpleRecorder
             try
             {
                 // start webcam recording
-                _webcamMediaRecording = await _webcamMediaCapture.PrepareLowLagRecordToStorageFileAsync(MediaEncodingProfile.CreateMp4(VideoEncodingQuality.HD720p), tempWebcamFile);
+                _webcamMediaRecording = await _webcamMediaCapture.PrepareLowLagRecordToStorageFileAsync(MediaEncodingProfile.CreateMp4(VideoEncodingQuality.Auto), tempWebcamFile);
 
                 // kick off the screen encoding parallel
                 using (var stream = await tempScreenFile.OpenAsync(FileAccessMode.ReadWrite))
