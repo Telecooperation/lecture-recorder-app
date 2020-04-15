@@ -12,7 +12,7 @@ xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
   <Identity
     Name="ac51017d-77a1-4dff-a04b-a91df9106efe"
     Publisher="CN=Alexander Seeliger"
-    Version="1.0.2.0" />
+    Version="1.0.3.0" />
 
   <Properties>
     <DisplayName>Recorder</DisplayName>
@@ -54,6 +54,8 @@ xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
   <Capabilities>
     <Capability Name="internetClient" />
     <rescap:Capability Name="runFullTrust" />
+    <rescap:Capability Name="backgroundMediaRecording" />
+    <rescap:Capability Name="extendedExecutionUnconstrained" />
     <uap6:Capability Name="graphicsCapture"/>
     <DeviceCapability Name="webcam"/>
     <DeviceCapability Name="microphone"/>

@@ -15,6 +15,8 @@ namespace SimpleRecorder
 
         public bool UseSourceSize;
 
+        public bool AdaptBitrate;
+
         public string WebcamDeviceId;
 
         public string WebcamQuality;

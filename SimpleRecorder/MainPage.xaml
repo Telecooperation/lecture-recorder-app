@@ -34,6 +34,7 @@
 
                 <StackPanel Orientation="Horizontal">
                     <CheckBox x:Name="UseCaptureItemSizeCheckBox" HorizontalAlignment="Center" Margin="10" Content="Use source size as video resolution" VerticalAlignment="Top" IsChecked="False" MaxWidth="200"/>
+                    <CheckBox x:Name="AdaptBitrateCheckBox" HorizontalAlignment="Center" Margin="10" Content="Bitrate Adaptation" VerticalAlignment="Top" IsChecked="False" MaxWidth="200"/>
                 </StackPanel>
 
                 <TextBlock Text="webcam options" Style="{StaticResource SubheaderTextBlockStyle}" HorizontalAlignment="Stretch" HorizontalTextAlignment="Center" />

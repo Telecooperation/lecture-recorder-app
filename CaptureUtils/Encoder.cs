@@ -45,7 +45,7 @@ namespace CaptureUtils
 
                 var encodingProfile = new MediaEncodingProfile();
                 encodingProfile.Container.Subtype = "MPEG4";
-                encodingProfile.Video.Subtype = "H264";
+                encodingProfile.Video.Subtype = MediaEncodingSubtypes.H264;
                 encodingProfile.Video.Width = width;
                 encodingProfile.Video.Height = height;
                 encodingProfile.Video.Bitrate = bitrateInBps;

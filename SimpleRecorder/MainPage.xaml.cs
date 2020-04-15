@@ -7,6 +7,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using Windows.ApplicationModel;
 using Windows.ApplicationModel.AppService;
+using Windows.ApplicationModel.ExtendedExecution;
+using Windows.ApplicationModel.ExtendedExecution.Foreground;
 using Windows.Devices.Enumeration;
 using Windows.Graphics.Capture;
 using Windows.Graphics.DirectX.Direct3D11;
@@ -71,6 +73,7 @@ namespace SimpleRecorder
             FrameRateComboBox.SelectedIndex = frameRates.IndexOf($"{settings.FrameRate}fps");
 
             UseCaptureItemSizeCheckBox.IsChecked = settings.UseSourceSize;
+            AdaptBitrateCheckBox.IsChecked = settings.AdaptBitrate;
 
             WebcamDeviceComboBox.SelectedItem = WebcamDeviceComboBox.Items.Where(x => (x as ComboBoxItem).Tag.ToString() == settings.WebcamDeviceId).FirstOrDefault();
         }
@@ -114,6 +117,10 @@ namespace SimpleRecorder
         private async void ToggleButton_Checked(object sender, RoutedEventArgs e)
         {
             var button = (ToggleButton)sender;
+
+            var requestSuspensionExtension = new ExtendedExecutionForegroundSession();
+            requestSuspensionExtension.Reason = ExtendedExecutionForegroundReason.Unspecified;
+            var requestExtensionResult = await requestSuspensionExtension.RequestExtensionAsync();
 
             // get encoder properties
             var frameRate = uint.Parse(((string)FrameRateComboBox.SelectedItem).Replace("fps", ""));
@@ -161,7 +168,35 @@ namespace SimpleRecorder
             try
             {
                 // start webcam recording
-                _webcamMediaRecording = await _webcamMediaCapture.PrepareLowLagRecordToStorageFileAsync(MediaEncodingProfile.CreateMp4(VideoEncodingQuality.Auto), tempWebcamFile);
+                MediaEncodingProfile webcamEncodingProfile = null;
+
+                if (AdaptBitrateCheckBox.IsChecked.Value)
+                {
+                    var selectedItem = WebcamComboBox.SelectedItem as ComboBoxItem;
+                    var encodingProperties = (selectedItem.Tag as StreamPropertiesHelper);
+
+                    if (encodingProperties.Height > 720)
+                    {
+                        webcamEncodingProfile = MediaEncodingProfile.CreateMp4(VideoEncodingQuality.HD1080p);
+                        webcamEncodingProfile.Video.Bitrate = 8000000;
+                    }
+                    else if (encodingProperties.Height > 480)
+                    {
+                        webcamEncodingProfile = MediaEncodingProfile.CreateMp4(VideoEncodingQuality.HD720p);
+                        webcamEncodingProfile.Video.Bitrate = 5000000;
+                    }
+                    else
+                    {
+                        webcamEncodingProfile = MediaEncodingProfile.CreateMp4(VideoEncodingQuality.Pal);
+                        webcamEncodingProfile.Video.Bitrate = 2500000;
+                    }
+                }
+                else
+                {
+                    webcamEncodingProfile = MediaEncodingProfile.CreateMp4(VideoEncodingQuality.Auto);
+                }
+
+                _webcamMediaRecording = await _webcamMediaCapture.PrepareLowLagRecordToStorageFileAsync(webcamEncodingProfile, tempWebcamFile);
 
                 // kick off the screen encoding parallel
                 using (var stream = await tempScreenFile.OpenAsync(FileAccessMode.ReadWrite))
@@ -184,6 +219,7 @@ namespace SimpleRecorder
 
                 // user has finished recording, so stop webcam recording
                 await _webcamMediaRecording.StopAsync();
+                await _webcamMediaRecording.FinishAsync();
             }
             catch (Exception ex)
             {
@@ -257,6 +293,8 @@ namespace SimpleRecorder
             button.IsChecked = false;
             MainTextBlock.Text = "done";
             MainProgressBar.IsIndeterminate = false;
+
+            requestSuspensionExtension.Dispose();
         }
 
         private void CaptureManager_RecordLimitationExceeded(MediaCapture sender)
@@ -316,6 +354,7 @@ namespace SimpleRecorder
             var quality = ParseEnumValue<VideoEncodingQuality>((string)QualityComboBox.SelectedItem);
             var frameRate = uint.Parse(((string)FrameRateComboBox.SelectedItem).Replace("fps", ""));
             var useSourceSize = UseCaptureItemSizeCheckBox.IsChecked.Value;
+            var adaptBitrate = AdaptBitrateCheckBox.IsChecked.Value;
             var webcamQuality = (WebcamComboBox.SelectedItem as ComboBoxItem).Content.ToString();
 
             return new AppSettings
@@ -324,7 +363,8 @@ namespace SimpleRecorder
                 FrameRate = frameRate,
                 UseSourceSize = useSourceSize,
                 WebcamDeviceId = (WebcamDeviceComboBox.SelectedItem as ComboBoxItem).Tag.ToString(),
-                WebcamQuality = webcamQuality
+                WebcamQuality = webcamQuality,
+                AdaptBitrate = adaptBitrate
             };
         }
 
@@ -335,7 +375,8 @@ namespace SimpleRecorder
             {
                 Quality = VideoEncodingQuality.HD1080p,
                 FrameRate = 60,
-                UseSourceSize = true
+                UseSourceSize = true,
+                AdaptBitrate = true
             };
             if (localSettings.Values.TryGetValue(nameof(AppSettings.Quality), out var quality))
             {
@@ -348,6 +389,10 @@ namespace SimpleRecorder
             if (localSettings.Values.TryGetValue(nameof(AppSettings.UseSourceSize), out var useSourceSize))
             {
                 result.UseSourceSize = (bool)useSourceSize;
+            }
+            if (localSettings.Values.TryGetValue(nameof(AppSettings.AdaptBitrate), out var adaptBitrate))
+            {
+                result.AdaptBitrate = (bool)adaptBitrate;
             }
             if (localSettings.Values.TryGetValue(nameof(AppSettings.WebcamQuality), out var webcamQuality))
             {
@@ -372,6 +417,7 @@ namespace SimpleRecorder
             localSettings.Values[nameof(AppSettings.Quality)] = settings.Quality.ToString();
             localSettings.Values[nameof(AppSettings.FrameRate)] = settings.FrameRate;
             localSettings.Values[nameof(AppSettings.UseSourceSize)] = settings.UseSourceSize;
+            localSettings.Values[nameof(AppSettings.AdaptBitrate)] = settings.AdaptBitrate;
             localSettings.Values[nameof(AppSettings.WebcamDeviceId)] = settings.WebcamDeviceId;
             localSettings.Values[nameof(AppSettings.WebcamQuality)] = settings.WebcamQuality;
         }
