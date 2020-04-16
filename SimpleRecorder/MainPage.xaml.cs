@@ -122,6 +122,19 @@ namespace SimpleRecorder
             requestSuspensionExtension.Reason = ExtendedExecutionForegroundReason.Unspecified;
             var requestExtensionResult = await requestSuspensionExtension.RequestExtensionAsync();
 
+            // get storage folder
+            var folderPicker = new FolderPicker();
+            folderPicker.ViewMode = Windows.Storage.Pickers.PickerViewMode.List;
+            folderPicker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.VideosLibrary;
+            folderPicker.FileTypeFilter.Add("*");
+
+            var folder = await folderPicker.PickSingleFolderAsync();
+
+            // get storage files
+            var screenFile = await folder.CreateFileAsync("slides.mp4");
+            var webcamFile = await folder.CreateFileAsync("talkinghead.mp4");
+            var jsonFile = await folder.CreateFileAsync("meta.json");
+
             // get encoder properties
             var frameRate = uint.Parse(((string)FrameRateComboBox.SelectedItem).Replace("fps", ""));
             var quality = (VideoEncodingQuality)Enum.Parse(typeof(VideoEncodingQuality), (string)QualityComboBox.SelectedItem, false);
@@ -152,10 +165,6 @@ namespace SimpleRecorder
                 width = EnsureEven(width);
                 height = EnsureEven(height);
             }
-
-            // get temporary files
-            var tempScreenFile = await GetTempFileAsync();
-            var tempWebcamFile = await GetTempFileAsync(true);
 
             // tell the user we've started recording
             MainTextBlock.Text = "● rec";
@@ -196,10 +205,10 @@ namespace SimpleRecorder
                     webcamEncodingProfile = MediaEncodingProfile.CreateMp4(VideoEncodingQuality.Auto);
                 }
 
-                _webcamMediaRecording = await _webcamMediaCapture.PrepareLowLagRecordToStorageFileAsync(webcamEncodingProfile, tempWebcamFile);
+                _webcamMediaRecording = await _webcamMediaCapture.PrepareLowLagRecordToStorageFileAsync(webcamEncodingProfile, webcamFile);
 
                 // kick off the screen encoding parallel
-                using (var stream = await tempScreenFile.OpenAsync(FileAccessMode.ReadWrite))
+                using (var stream = await screenFile.OpenAsync(FileAccessMode.ReadWrite))
                 using (_screenEncoder = new Encoder(_screenDevice, item))
                 {
                     // webcam recording
@@ -239,41 +248,6 @@ namespace SimpleRecorder
             // at this point the encoding has finished
             MainTextBlock.Text = "saving...";
 
-            // ask the user where they'd like the video to live
-            var finalScreenFile = await PickVideoAsync();
-            if (finalScreenFile == null)
-            {
-                // user decided they didn't want it
-                button.IsChecked = false;
-                MainTextBlock.Text = "canceled";
-                MainProgressBar.IsIndeterminate = false;
-
-                await tempScreenFile.DeleteAsync();
-                return;
-            }
-
-            // move screen recording to its new home
-            await tempScreenFile.MoveAndReplaceAsync(finalScreenFile);
-
-
-            // ask the user where they'd like the webcam video to live
-            var finalWebcamFile = await PickVideoAsync();
-            if (finalWebcamFile == null)
-            {
-                // user decided they didn't want it
-                button.IsChecked = false;
-                MainTextBlock.Text = "canceled";
-                MainProgressBar.IsIndeterminate = false;
-
-                await tempWebcamFile.DeleteAsync();
-
-                return;
-            }
-
-            // move webcam video
-            await tempWebcamFile.MoveAndReplaceAsync(finalWebcamFile);
-
-
             // save slide markers
             var recording = new Recording()
             {
@@ -281,13 +255,7 @@ namespace SimpleRecorder
             };
 
             var json = JsonConvert.SerializeObject(recording, Formatting.Indented);
-
-            var jsonFile = await PickMetaAsync();
-            if (jsonFile != null)
-            {
-                await FileIO.WriteTextAsync(jsonFile, json);
-            }
-
+            await FileIO.WriteTextAsync(jsonFile, json);
 
             // tell the user we're done
             button.IsChecked = false;
@@ -309,39 +277,6 @@ namespace SimpleRecorder
         {
             // If the encoder is doing stuff, tell it to stop
             _screenEncoder?.Dispose();
-        }
-
-        private async Task<StorageFile> PickVideoAsync()
-        {
-            var picker = new FileSavePicker();
-            picker.SuggestedStartLocation = PickerLocationId.VideosLibrary;
-            picker.SuggestedFileName = "recordedVideo";
-            picker.DefaultFileExtension = ".mp4";
-            picker.FileTypeChoices.Add("MP4 Video", new List<string> { ".mp4" });
-
-            var file = await picker.PickSaveFileAsync();
-            return file;
-        }
-
-        private async Task<StorageFile> PickMetaAsync()
-        {
-            var picker = new FileSavePicker();
-            picker.SuggestedStartLocation = PickerLocationId.VideosLibrary;
-            picker.SuggestedFileName = "recordedVideo";
-            picker.DefaultFileExtension = ".json";
-            picker.FileTypeChoices.Add("Json Meta Video", new List<string> { ".json" });
-
-            var file = await picker.PickSaveFileAsync();
-            return file;
-        }
-
-        private async Task<StorageFile> GetTempFileAsync(bool webcam = false)
-        {
-            var folder = ApplicationData.Current.TemporaryFolder;
-            var name = DateTime.Now.ToString("yyyyMMdd-HHmm-ss");
-
-            var file = await folder.CreateFileAsync($"{name}" + (webcam ? "-webcam" : "") + ".mp4");
-            return file;
         }
 
         private uint EnsureEven(uint number)
