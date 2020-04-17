@@ -33,6 +33,9 @@ namespace SimpleRecorder
         private MediaCapture _webcamMediaCapture;
         private LowLagMediaRecording _webcamMediaRecording;
 
+        private StorageFolder _storageFolder = null;
+        private GraphicsCaptureItem _item = null;
+
         public MainPage()
         {
             InitializeComponent();
@@ -118,22 +121,26 @@ namespace SimpleRecorder
         {
             var button = (ToggleButton)sender;
 
+            // get storage folder
+            if (_storageFolder == null)
+            {
+                var msg = new MessageDialog("Please choose a folder first...");
+                await msg.ShowAsync();
+
+                button.IsChecked = false;
+                return;
+            }
+
             var requestSuspensionExtension = new ExtendedExecutionForegroundSession();
             requestSuspensionExtension.Reason = ExtendedExecutionForegroundReason.Unspecified;
             var requestExtensionResult = await requestSuspensionExtension.RequestExtensionAsync();
 
-            // get storage folder
-            var folderPicker = new FolderPicker();
-            folderPicker.ViewMode = Windows.Storage.Pickers.PickerViewMode.List;
-            folderPicker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.VideosLibrary;
-            folderPicker.FileTypeFilter.Add("*");
-
-            var folder = await folderPicker.PickSingleFolderAsync();
-
             // get storage files
-            var screenFile = await folder.CreateFileAsync("slides.mp4");
-            var webcamFile = await folder.CreateFileAsync("talkinghead.mp4");
-            var jsonFile = await folder.CreateFileAsync("meta.json");
+            var time = DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss_");
+
+            var screenFile = await _storageFolder.CreateFileAsync(time + "slides.mp4");
+            var webcamFile = await _storageFolder.CreateFileAsync(time + "talkinghead.mp4");
+            var jsonFile = await _storageFolder.CreateFileAsync(time + "meta.json");
 
             // get encoder properties
             var frameRate = uint.Parse(((string)FrameRateComboBox.SelectedItem).Replace("fps", ""));
@@ -146,19 +153,22 @@ namespace SimpleRecorder
             var height = temp.Video.Height;
 
             // get capture item
-            var picker = new GraphicsCapturePicker();
-            var item = await picker.PickSingleItemAsync();
-            if (item == null)
+            if (_item == null)
             {
-                button.IsChecked = false;
-                return;
+                var picker = new GraphicsCapturePicker();
+                _item = await picker.PickSingleItemAsync();
+                if (_item == null)
+                {
+                    button.IsChecked = false;
+                    return;
+                }
             }
 
             // use the capture item's size for the encoding if desired
             if (useSourceSize)
             {
-                width = (uint)item.Size.Width;
-                height = (uint)item.Size.Height;
+                width = (uint)_item.Size.Width;
+                height = (uint)_item.Size.Height;
 
                 // even if we're using the capture item's real size,
                 // we still want to make sure the numbers are even.
@@ -209,7 +219,7 @@ namespace SimpleRecorder
 
                 // kick off the screen encoding parallel
                 using (var stream = await screenFile.OpenAsync(FileAccessMode.ReadWrite))
-                using (_screenEncoder = new Encoder(_screenDevice, item))
+                using (_screenEncoder = new Encoder(_screenDevice, _item))
                 {
                     // webcam recording
                     if (_webcamMediaCapture != null)
@@ -432,6 +442,17 @@ namespace SimpleRecorder
             await InitWebcamDevicesAsync();
 
             LoadSettings();
+        }
+
+        private async void BtnFolderPicker_Click(object sender, RoutedEventArgs e)
+        {
+            var folderPicker = new FolderPicker();
+            folderPicker.ViewMode = Windows.Storage.Pickers.PickerViewMode.List;
+            folderPicker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.VideosLibrary;
+            folderPicker.FileTypeFilter.Add("*");
+
+            _storageFolder = await folderPicker.PickSingleFolderAsync();
+            FolderName.Text = _storageFolder.Path;
         }
     }
 }

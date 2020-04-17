@@ -20,6 +20,13 @@
 
         <Grid Grid.Column="0" Grid.RowSpan="2">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                <TextBlock Text="storage options" Style="{StaticResource SubheaderTextBlockStyle}" HorizontalAlignment="Stretch" HorizontalTextAlignment="Center" />
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock VerticalAlignment="Center" MinWidth="50" Margin="10">Folder:</TextBlock>
+                    <TextBlock x:Name="FolderName" VerticalAlignment="Center" MinWidth="220" Margin="10"></TextBlock>
+                    <Button x:Name="BtnFolderPicker" Content="Browse" Click="BtnFolderPicker_Click"></Button>
+                </StackPanel>
+                
                 <TextBlock Text="screen options" Style="{StaticResource SubheaderTextBlockStyle}" HorizontalAlignment="Stretch" HorizontalTextAlignment="Center" />
 
                 <StackPanel Orientation="Horizontal">
@@ -48,6 +55,8 @@
                     <TextBlock VerticalAlignment="Center" MinWidth="150" Margin="10">Webcam Quality:</TextBlock>
                     <ComboBox x:Name="WebcamComboBox" Margin="10" MinWidth="200" SelectionChanged="WebcamComboBox_SelectionChanged" />
                 </StackPanel>
+
+                <StackPanel Orientation="Horizontal"/>
 
                 <TextBlock Text="powerpoint integration" Style="{StaticResource SubheaderTextBlockStyle}" HorizontalAlignment="Stretch" HorizontalTextAlignment="Center" />
 
