@@ -41,10 +41,11 @@ namespace PowerpointAppService
             await connection?.SendMessageAsync(msg);
         }
 
-        private async static void PowerPoint_SlideChanged(object sender, EventArgs e)
+        private async static void PowerPoint_SlideChanged(object sender, SlideChangedEventArgs e)
         {
             var msg = new ValueSet();
             msg.Add("TYPE", "SlideChanged");
+            msg.Add("TITLE", e.Title);
 
             await connection?.SendMessageAsync(msg);
         }

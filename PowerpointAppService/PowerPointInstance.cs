@@ -18,7 +18,7 @@ namespace PowerpointAppService
 
         public event EventHandler<PowerPointStatus> StatusChanged;
 
-        public event EventHandler SlideChanged;
+        public event EventHandler<SlideChangedEventArgs> SlideChanged;
 
         public enum PowerPointStatus
         {
@@ -104,17 +104,47 @@ namespace PowerpointAppService
 
         private void Powerpoint_SlideShowBegin(SlideShowWindow Wn)
         {
-            
+
         }
 
         private void Powerpoint_SlideShowEnd(Presentation Pres)
         {
-            
+
         }
 
         private void Powerpoint_SlideShowNextSlide(SlideShowWindow Wn)
         {
-            SlideChanged(this, null);
+            // extract title
+            string title = "";
+
+            //if (Wn.View.Slide.Shapes.HasTitle == Microsoft.Office.Core.MsoTriState.msoTrue)
+            //{
+            //    if (Wn.View.Slide.Shapes.Title.HasTextFrame == Microsoft.Office.Core.MsoTriState.msoTrue)
+            //    {
+            //        if (Wn.View.Slide.Shapes.Title.TextFrame.HasText == Microsoft.Office.Core.MsoTriState.msoTrue)
+            //        {
+            //            title = Wn.View.Slide.Shapes.Title.TextFrame.TextRange.Text;
+            //        }
+            //    }
+            //}
+
+            //string keywords = "";
+
+            //foreach (Shape shape in Wn.View.Slide.Shapes)
+            //{
+            //    if (shape.HasTextFrame == Microsoft.Office.Core.MsoTriState.msoTrue)
+            //    {
+            //        if (shape.TextFrame.HasText == Microsoft.Office.Core.MsoTriState.msoTrue)
+            //        {
+            //            keywords += " " + shape.TextFrame.TextRange.Text;
+            //        }
+            //    }
+            //}
+
+            //keywords = keywords.Replace("\r\n", "");
+            //keywords = keywords.Trim();
+
+            SlideChanged(this, new SlideChangedEventArgs() { Title = title });
         }
 
         public void Dispose()

@@ -1,5 +1,6 @@
 ﻿using CaptureUtils;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 using SimpleRecorder.Model;
 using System;
 using System.Collections.Generic;
@@ -177,12 +178,20 @@ namespace SimpleRecorder
             }
 
             // tell the user we've started recording
-            MainTextBlock.Text = "● rec";
-
             var originalBrush = MainTextBlock.Foreground;
             MainTextBlock.Foreground = new SolidColorBrush(Colors.Red);
-
             MainProgressBar.IsIndeterminate = true;
+
+            MainTextBlock.Text = "3 ...";
+            await Task.Delay(1000);
+
+            MainTextBlock.Text = "2 ...";
+            await Task.Delay(1000);
+
+            MainTextBlock.Text = "1 ...";
+            await Task.Delay(1000);
+
+            MainTextBlock.Text = "● rec";
 
             try
             {
@@ -252,6 +261,14 @@ namespace SimpleRecorder
                 MainTextBlock.Text = "failure";
                 MainTextBlock.Foreground = originalBrush;
                 MainProgressBar.IsIndeterminate = false;
+
+                _item = null;
+                if (_webcamMediaRecording != null)
+                {
+                    await _webcamMediaRecording.StopAsync();
+                    await _webcamMediaRecording.FinishAsync();
+                }
+
                 return;
             }
 
@@ -264,7 +281,25 @@ namespace SimpleRecorder
                 Slides = _screenEncoder.GetTimestamps()
             };
 
-            var json = JsonConvert.SerializeObject(recording, Formatting.Indented);
+            // add metadata
+            var recordingMetadataDialog = new RecordingMetadataDialog();
+            var recordingMetadataDialogResult = await recordingMetadataDialog.ShowAsync();
+
+            if (recordingMetadataDialogResult == ContentDialogResult.Primary)
+            {
+                recording.Description = recordingMetadataDialog.LectureTitle;
+                recording.LectureDate = recordingMetadataDialog.LectureDate.Value.DateTime;
+            }
+            else
+            {
+                recording.Description = null;
+                recording.LectureDate = DateTime.Now;
+            }
+
+            var settings = new JsonSerializerSettings();
+            settings.ContractResolver = new CamelCasePropertyNamesContractResolver();
+
+            var json = JsonConvert.SerializeObject(recording, Formatting.Indented, settings);
             await FileIO.WriteTextAsync(jsonFile, json);
 
             // tell the user we're done
