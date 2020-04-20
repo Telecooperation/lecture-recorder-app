@@ -281,6 +281,12 @@ namespace SimpleRecorder
                 Slides = _screenEncoder.GetTimestamps()
             };
 
+            var settings = new JsonSerializerSettings();
+            settings.ContractResolver = new CamelCasePropertyNamesContractResolver();
+
+            var json = JsonConvert.SerializeObject(recording, Formatting.Indented, settings);
+            await FileIO.WriteTextAsync(jsonFile, json);
+
             // add metadata
             var recordingMetadataDialog = new RecordingMetadataDialog();
             var recordingMetadataDialogResult = await recordingMetadataDialog.ShowAsync();
@@ -288,7 +294,11 @@ namespace SimpleRecorder
             if (recordingMetadataDialogResult == ContentDialogResult.Primary)
             {
                 recording.Description = recordingMetadataDialog.LectureTitle;
-                recording.LectureDate = recordingMetadataDialog.LectureDate.Value.DateTime;
+
+                if (recordingMetadataDialog.LectureDate.HasValue)
+                {
+                    recording.LectureDate = recordingMetadataDialog.LectureDate.Value.DateTime;
+                }
             }
             else
             {
@@ -296,10 +306,7 @@ namespace SimpleRecorder
                 recording.LectureDate = DateTime.Now;
             }
 
-            var settings = new JsonSerializerSettings();
-            settings.ContractResolver = new CamelCasePropertyNamesContractResolver();
-
-            var json = JsonConvert.SerializeObject(recording, Formatting.Indented, settings);
+            json = JsonConvert.SerializeObject(recording, Formatting.Indented, settings);
             await FileIO.WriteTextAsync(jsonFile, json);
 
             // tell the user we're done
