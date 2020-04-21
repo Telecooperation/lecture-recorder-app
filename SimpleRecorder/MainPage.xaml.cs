@@ -154,15 +154,12 @@ namespace SimpleRecorder
             var height = temp.Video.Height;
 
             // get capture item
+            var picker = new GraphicsCapturePicker();
+            _item = await picker.PickSingleItemAsync();
             if (_item == null)
             {
-                var picker = new GraphicsCapturePicker();
-                _item = await picker.PickSingleItemAsync();
-                if (_item == null)
-                {
-                    button.IsChecked = false;
-                    return;
-                }
+                button.IsChecked = false;
+                return;
             }
 
             // use the capture item's size for the encoding if desired
@@ -215,8 +212,7 @@ namespace SimpleRecorder
                     }
                     else
                     {
-                        webcamEncodingProfile = MediaEncodingProfile.CreateMp4(VideoEncodingQuality.Pal);
-                        webcamEncodingProfile.Video.Bitrate = 2500000;
+                        webcamEncodingProfile = MediaEncodingProfile.CreateMp4(VideoEncodingQuality.Auto);
                     }
                 }
                 else
