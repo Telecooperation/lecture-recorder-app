@@ -65,6 +65,12 @@
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal">
+                        <TextBlock VerticalAlignment="Center" MinWidth="150" Margin="10">Exposure compensation:</TextBlock>
+                        <Slider Margin="10" MinWidth="150" Name="EvSlider" ValueChanged="EvSlider_ValueChanged"/>
+                        <TextBlock VerticalAlignment="Center" MinWidth="30" TextAlignment="Center" Text="{Binding ElementName=EvSlider,Path=Value}"/>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal">
                         <TextBlock VerticalAlignment="Center" MinWidth="150" Margin="10">White balance:</TextBlock>
                         <Slider Margin="10" MinWidth="150" Name="WbSlider" ValueChanged="WbSlider_ValueChanged"/>
                         <TextBlock VerticalAlignment="Center" MinWidth="30" TextAlignment="Center" Name="WbTextBox" Text="{Binding ElementName=WbSlider,Path=Value}" Visibility="{Binding ElementName=WbSlider,Path=Visibility}"/>

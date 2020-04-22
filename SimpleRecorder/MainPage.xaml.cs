@@ -466,6 +466,25 @@ namespace SimpleRecorder
                 ExposureSlider.Visibility = Visibility.Collapsed;
             }
 
+            // exposure compensation control
+            var exposureCompensationControl = _webcamMediaCapture.VideoDeviceController.ExposureCompensationControl;
+
+            if (exposureCompensationControl.Supported)
+            {
+                EvSlider.Visibility = Visibility.Visible;
+                EvSlider.Minimum = exposureCompensationControl.Min;
+                EvSlider.Maximum = exposureCompensationControl.Max;
+                EvSlider.StepFrequency = exposureCompensationControl.Step;
+
+                EvSlider.ValueChanged -= EvSlider_ValueChanged;
+                EvSlider.Value = exposureCompensationControl.Value;
+                EvSlider.ValueChanged += EvSlider_ValueChanged;
+            }
+            else
+            {
+                EvSlider.Visibility = Visibility.Collapsed;
+            }
+
             // white balance control
             var whiteBalanceControl = _webcamMediaCapture.VideoDeviceController.WhiteBalanceControl;
 
@@ -576,6 +595,12 @@ namespace SimpleRecorder
         {
             var autoExposure = ((sender as CheckBox).IsChecked == true);
             await _webcamMediaCapture.VideoDeviceController.ExposureControl.SetAutoAsync(autoExposure);
+        }
+
+        private async void EvSlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
+        {
+            var value = (sender as Slider).Value;
+            await _webcamMediaCapture.VideoDeviceController.ExposureCompensationControl.SetValueAsync((float)value);
         }
 
         private async void WbComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
