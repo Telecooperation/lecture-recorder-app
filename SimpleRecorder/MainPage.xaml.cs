@@ -69,7 +69,6 @@ namespace SimpleRecorder
             names.Add(nameof(VideoEncodingQuality.HD1080p));
             names.Add(nameof(VideoEncodingQuality.HD720p));
             names.Add(nameof(VideoEncodingQuality.Uhd2160p));
-            names.Add(nameof(VideoEncodingQuality.Uhd4320p));
             QualityComboBox.ItemsSource = names;
             QualityComboBox.SelectedIndex = names.IndexOf(settings.Quality.ToString());
 
@@ -174,11 +173,20 @@ namespace SimpleRecorder
                 width = (uint)_item.Size.Width;
                 height = (uint)_item.Size.Height;
 
-                // even if we're using the capture item's real size,
-                // we still want to make sure the numbers are even.
-                width = EnsureEven(width);
-                height = EnsureEven(height);
             }
+
+            // we have a screen resolution of more than 4K?
+            if (width > 1920)
+            {
+                var v = width / 1920;
+                width = 1920;
+                height = height / v;
+            }
+
+            // even if we're using the capture item's real size,
+            // we still want to make sure the numbers are even.
+            width = EnsureEven(width);
+            height = EnsureEven(height);
 
             // tell the user we've started recording
             var originalBrush = MainTextBlock.Foreground;
@@ -357,7 +365,11 @@ namespace SimpleRecorder
                 UseSourceSize = useSourceSize,
                 WebcamDeviceId = (WebcamDeviceComboBox.SelectedItem as ComboBoxItem).Tag.ToString(),
                 WebcamQuality = webcamQuality,
-                AdaptBitrate = adaptBitrate
+                AdaptBitrate = adaptBitrate,
+                WebcamExposure = (long)ExposureSlider.Value,
+                WebcamWhiteBalance = (uint)WbSlider.Value,
+                WebcamExposureAuto = ExposureAutoCheckBox.IsChecked.HasValue ? ExposureAutoCheckBox.IsChecked.Value : true,
+                WebcamWhiteBalanceAuto = WbAutoCheckBox.IsChecked.HasValue ? WbAutoCheckBox.IsChecked.Value : true
             };
         }
 
@@ -369,7 +381,9 @@ namespace SimpleRecorder
                 Quality = VideoEncodingQuality.HD1080p,
                 FrameRate = 60,
                 UseSourceSize = true,
-                AdaptBitrate = true
+                AdaptBitrate = true,
+                WebcamExposureAuto = true,
+                WebcamWhiteBalanceAuto = true
             };
             if (localSettings.Values.TryGetValue(nameof(AppSettings.Quality), out var quality))
             {
@@ -395,6 +409,23 @@ namespace SimpleRecorder
             {
                 result.WebcamDeviceId = webcamDeviceId as string;
             }
+            if (localSettings.Values.TryGetValue(nameof(AppSettings.WebcamExposure), out var webcamExposure))
+            {
+                result.WebcamExposure = (long)webcamExposure;
+            }
+            if (localSettings.Values.TryGetValue(nameof(AppSettings.WebcamExposureAuto), out var webcamExposureAuto))
+            {
+                result.WebcamExposureAuto = (bool)webcamExposureAuto;
+            }
+            if (localSettings.Values.TryGetValue(nameof(AppSettings.WebcamWhiteBalance), out var webcamWhiteBalance))
+            {
+                result.WebcamWhiteBalance = (uint)webcamWhiteBalance;
+            }
+            if (localSettings.Values.TryGetValue(nameof(AppSettings.WebcamWhiteBalanceAuto), out var webcamWhiteBalanceAuto))
+            {
+                result.WebcamWhiteBalanceAuto = (bool)webcamWhiteBalanceAuto;
+            }
+
             return result;
         }
 
@@ -413,6 +444,10 @@ namespace SimpleRecorder
             localSettings.Values[nameof(AppSettings.AdaptBitrate)] = settings.AdaptBitrate;
             localSettings.Values[nameof(AppSettings.WebcamDeviceId)] = settings.WebcamDeviceId;
             localSettings.Values[nameof(AppSettings.WebcamQuality)] = settings.WebcamQuality;
+            localSettings.Values[nameof(AppSettings.WebcamExposure)] = settings.WebcamExposure;
+            localSettings.Values[nameof(AppSettings.WebcamExposureAuto)] = settings.WebcamExposureAuto;
+            localSettings.Values[nameof(AppSettings.WebcamWhiteBalance)] = settings.WebcamWhiteBalance;
+            localSettings.Values[nameof(AppSettings.WebcamWhiteBalanceAuto)] = settings.WebcamWhiteBalanceAuto;
         }
 
         private static T ParseEnumValue<T>(string input)
@@ -434,13 +469,8 @@ namespace SimpleRecorder
             }
         }
 
-        private async void WebcamComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void SetExposureControls()
         {
-            var selectedItem = (sender as ComboBox).SelectedItem as ComboBoxItem;
-            var encodingProperties = (selectedItem.Tag as StreamPropertiesHelper).EncodingProperties;
-            await _webcamMediaCapture.VideoDeviceController.SetMediaStreamPropertiesAsync(MediaStreamType.VideoRecord, encodingProperties);
-
-
             // exposure control
             var exposureControl = _webcamMediaCapture.VideoDeviceController.ExposureControl;
 
@@ -462,29 +492,38 @@ namespace SimpleRecorder
             }
             else
             {
-                ExposureAutoCheckBox.Visibility = Visibility.Collapsed;
-                ExposureSlider.Visibility = Visibility.Collapsed;
+                var exposure = _webcamMediaCapture.VideoDeviceController.Exposure;
+                double value;
+
+                if (exposure.TryGetValue(out value))
+                {
+                    ExposureSlider.Minimum = exposure.Capabilities.Min;
+                    ExposureSlider.Maximum = exposure.Capabilities.Max;
+                    ExposureSlider.StepFrequency = exposure.Capabilities.Step;
+
+                    ExposureSlider.ValueChanged -= ExposureSlider_ValueChanged;
+                    ExposureSlider.Value = value;
+                    ExposureSlider.ValueChanged += ExposureSlider_ValueChanged;
+                }
+                else
+                {
+                    ExposureSlider.Visibility = Visibility.Collapsed;
+                }
+
+                bool autoValue;
+                if (exposure.TryGetAuto(out autoValue))
+                {
+                    ExposureAutoCheckBox.IsChecked = autoValue;
+                }
+                else
+                {
+                    ExposureAutoCheckBox.Visibility = Visibility.Collapsed;
+                }
             }
+        }
 
-            // exposure compensation control
-            var exposureCompensationControl = _webcamMediaCapture.VideoDeviceController.ExposureCompensationControl;
-
-            if (exposureCompensationControl.Supported)
-            {
-                EvSlider.Visibility = Visibility.Visible;
-                EvSlider.Minimum = exposureCompensationControl.Min;
-                EvSlider.Maximum = exposureCompensationControl.Max;
-                EvSlider.StepFrequency = exposureCompensationControl.Step;
-
-                EvSlider.ValueChanged -= EvSlider_ValueChanged;
-                EvSlider.Value = exposureCompensationControl.Value;
-                EvSlider.ValueChanged += EvSlider_ValueChanged;
-            }
-            else
-            {
-                EvSlider.Visibility = Visibility.Collapsed;
-            }
-
+        private void SetWhiteBalanceControl()
+        {
             // white balance control
             var whiteBalanceControl = _webcamMediaCapture.VideoDeviceController.WhiteBalanceControl;
 
@@ -502,7 +541,6 @@ namespace SimpleRecorder
 
                 if (whiteBalanceControl.Max - whiteBalanceControl.Min > whiteBalanceControl.Step)
                 {
-
                     WbSlider.Minimum = whiteBalanceControl.Min;
                     WbSlider.Maximum = whiteBalanceControl.Max;
                     WbSlider.StepFrequency = whiteBalanceControl.Step;
@@ -518,8 +556,72 @@ namespace SimpleRecorder
             }
             else
             {
-                WbSlider.Visibility = Visibility.Collapsed;
                 WbComboBox.Visibility = Visibility.Collapsed;
+
+                var whitebalance = _webcamMediaCapture.VideoDeviceController.WhiteBalance;
+                double value;
+
+                if (whitebalance.TryGetValue(out value))
+                {
+                    WbSlider.Minimum = whitebalance.Capabilities.Min;
+                    WbSlider.Maximum = whitebalance.Capabilities.Max;
+                    WbSlider.StepFrequency = whitebalance.Capabilities.Step;
+
+                    WbSlider.ValueChanged -= WbSlider_ValueChanged;
+                    WbSlider.Value = value;
+                    WbSlider.ValueChanged += WbSlider_ValueChanged;
+                }
+                else
+                {
+                    WbSlider.Visibility = Visibility.Collapsed;
+                }
+
+                bool autoValue;
+                if (whitebalance.TryGetAuto(out autoValue))
+                {
+                    WbAutoCheckBox.Visibility = Visibility.Visible;
+                    WbAutoCheckBox.IsChecked = autoValue;
+
+                    WbAutoCheckBox.Checked += WbCheckBox_CheckedChanged;
+                    WbAutoCheckBox.Unchecked += WbCheckBox_CheckedChanged;
+                }
+            }
+        }
+
+        private void WbCheckBox_CheckedChanged(object sender, RoutedEventArgs e)
+        {
+            if (_webcamMediaCapture.VideoDeviceController.WhiteBalance.Capabilities.AutoModeSupported)
+            {
+                _webcamMediaCapture.VideoDeviceController.WhiteBalance.TrySetAuto(WbAutoCheckBox.IsChecked.Value);
+            }
+        }
+
+        private async void WebcamComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var selectedItem = (sender as ComboBox).SelectedItem as ComboBoxItem;
+            var encodingProperties = (selectedItem.Tag as StreamPropertiesHelper).EncodingProperties;
+            await _webcamMediaCapture.VideoDeviceController.SetMediaStreamPropertiesAsync(MediaStreamType.VideoRecord, encodingProperties);
+
+            SetExposureControls();
+            SetWhiteBalanceControl();
+
+            // load settings
+            var settings = GetCachedSettings();
+
+            if (ExposureAutoCheckBox.Visibility == Visibility.Visible && ExposureSlider.Visibility == Visibility.Visible)
+            {
+                ExposureSlider.Value = settings.WebcamExposure;
+                ExposureAutoCheckBox.IsChecked = settings.WebcamExposureAuto;
+            }
+
+            if (WbSlider.Visibility == Visibility.Visible)
+            {
+                WbSlider.Value = settings.WebcamWhiteBalance;
+            }
+
+            if (WbAutoCheckBox.Visibility == Visibility.Visible)
+            {
+                WbAutoCheckBox.IsChecked = settings.WebcamWhiteBalanceAuto;
             }
         }
 
@@ -588,13 +690,29 @@ namespace SimpleRecorder
         private async void ExposureSlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
         {
             var value = TimeSpan.FromTicks((long)(sender as Slider).Value);
-            await _webcamMediaCapture.VideoDeviceController.ExposureControl.SetValueAsync(value);
+
+            if (_webcamMediaCapture.VideoDeviceController.ExposureControl.Supported)
+            {
+                await _webcamMediaCapture.VideoDeviceController.ExposureControl.SetValueAsync(value);
+            }
+            else
+            {
+                _webcamMediaCapture.VideoDeviceController.Exposure.TrySetValue((long)(sender as Slider).Value);
+            }
         }
 
         private async void ExposureCheckBox_CheckedChanged(object sender, RoutedEventArgs e)
         {
             var autoExposure = ((sender as CheckBox).IsChecked == true);
-            await _webcamMediaCapture.VideoDeviceController.ExposureControl.SetAutoAsync(autoExposure);
+
+            if (_webcamMediaCapture.VideoDeviceController.ExposureControl.Supported)
+            {
+                await _webcamMediaCapture.VideoDeviceController.ExposureControl.SetAutoAsync(autoExposure);
+            }
+            else
+            {
+                _webcamMediaCapture.VideoDeviceController.Exposure.TrySetAuto(autoExposure);
+            }
         }
 
         private async void EvSlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
@@ -614,7 +732,15 @@ namespace SimpleRecorder
         private async void WbSlider_ValueChanged(object sender, Windows.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
         {
             var value = (sender as Slider).Value;
-            await _webcamMediaCapture.VideoDeviceController.WhiteBalanceControl.SetValueAsync((uint)value);
+
+            if (_webcamMediaCapture.VideoDeviceController.WhiteBalanceControl.Supported)
+            {
+                await _webcamMediaCapture.VideoDeviceController.WhiteBalanceControl.SetValueAsync((uint)value);
+            }
+            else
+            {
+                _webcamMediaCapture.VideoDeviceController.WhiteBalance.TrySetValue(value);
+            }
         }
     }
 }

@@ -20,5 +20,15 @@ namespace SimpleRecorder
         public string WebcamDeviceId;
 
         public string WebcamQuality;
+
+        public long WebcamExposure;
+
+        public bool WebcamExposureAuto;
+
+        public float WebcamExposureCompensation;
+
+        public uint WebcamWhiteBalance;
+
+        public bool WebcamWhiteBalanceAuto;
     }
 }
