@@ -14,6 +14,7 @@ using Windows.Devices.Enumeration;
 using Windows.Graphics.Capture;
 using Windows.Graphics.DirectX.Direct3D11;
 using Windows.Media.Capture;
+using Windows.Media.Devices;
 using Windows.Media.MediaProperties;
 using Windows.Storage;
 using Windows.Storage.Pickers;
@@ -106,6 +107,11 @@ namespace SimpleRecorder
 
         private async Task InitWebcamAsync(string deviceId)
         {
+            if (_webcamMediaCapture != null)
+            {
+                await _webcamMediaCapture.StopPreviewAsync();
+            }
+
             _webcamMediaCapture = new MediaCapture();
             _webcamMediaCapture.RecordLimitationExceeded += CaptureManager_RecordLimitationExceeded;
 
@@ -179,6 +185,8 @@ namespace SimpleRecorder
             MainTextBlock.Foreground = new SolidColorBrush(Colors.Red);
             MainProgressBar.IsIndeterminate = true;
 
+            button.IsEnabled = false;
+
             MainTextBlock.Text = "3 ...";
             await Task.Delay(1000);
 
@@ -187,6 +195,8 @@ namespace SimpleRecorder
 
             MainTextBlock.Text = "1 ...";
             await Task.Delay(1000);
+
+            button.IsEnabled = true;
 
             MainTextBlock.Text = "● rec";
 
@@ -429,6 +439,69 @@ namespace SimpleRecorder
             var selectedItem = (sender as ComboBox).SelectedItem as ComboBoxItem;
             var encodingProperties = (selectedItem.Tag as StreamPropertiesHelper).EncodingProperties;
             await _webcamMediaCapture.VideoDeviceController.SetMediaStreamPropertiesAsync(MediaStreamType.VideoRecord, encodingProperties);
+
+
+            // exposure control
+            var exposureControl = _webcamMediaCapture.VideoDeviceController.ExposureControl;
+
+            if (exposureControl.Supported)
+            {
+                ExposureAutoCheckBox.Visibility = Visibility.Visible;
+                ExposureSlider.Visibility = Visibility.Visible;
+
+                ExposureAutoCheckBox.IsChecked = exposureControl.Auto;
+
+                ExposureSlider.Minimum = exposureControl.Min.Ticks;
+                ExposureSlider.Maximum = exposureControl.Max.Ticks;
+                ExposureSlider.StepFrequency = exposureControl.Step.Ticks;
+
+                ExposureSlider.ValueChanged -= ExposureSlider_ValueChanged;
+                var value = exposureControl.Value;
+                ExposureSlider.Value = value.Ticks;
+                ExposureSlider.ValueChanged += ExposureSlider_ValueChanged;
+            }
+            else
+            {
+                ExposureAutoCheckBox.Visibility = Visibility.Collapsed;
+                ExposureSlider.Visibility = Visibility.Collapsed;
+            }
+
+            // white balance control
+            var whiteBalanceControl = _webcamMediaCapture.VideoDeviceController.WhiteBalanceControl;
+
+            if (whiteBalanceControl.Supported)
+            {
+                WbSlider.Visibility = Visibility.Visible;
+                WbComboBox.Visibility = Visibility.Visible;
+
+                if (WbComboBox.ItemsSource == null)
+                {
+                    WbComboBox.ItemsSource = Enum.GetValues(typeof(ColorTemperaturePreset)).Cast<ColorTemperaturePreset>();
+                }
+
+                WbComboBox.SelectedItem = whiteBalanceControl.Preset;
+
+                if (whiteBalanceControl.Max - whiteBalanceControl.Min > whiteBalanceControl.Step)
+                {
+
+                    WbSlider.Minimum = whiteBalanceControl.Min;
+                    WbSlider.Maximum = whiteBalanceControl.Max;
+                    WbSlider.StepFrequency = whiteBalanceControl.Step;
+
+                    WbSlider.ValueChanged -= WbSlider_ValueChanged;
+                    WbSlider.Value = whiteBalanceControl.Value;
+                    WbSlider.ValueChanged += WbSlider_ValueChanged;
+                }
+                else
+                {
+                    WbSlider.Visibility = Visibility.Collapsed;
+                }
+            }
+            else
+            {
+                WbSlider.Visibility = Visibility.Collapsed;
+                WbComboBox.Visibility = Visibility.Collapsed;
+            }
         }
 
         private async void WebcamDeviceComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -491,6 +564,32 @@ namespace SimpleRecorder
 
             _storageFolder = await folderPicker.PickSingleFolderAsync();
             FolderName.Text = _storageFolder.Path;
+        }
+
+        private async void ExposureSlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
+        {
+            var value = TimeSpan.FromTicks((long)(sender as Slider).Value);
+            await _webcamMediaCapture.VideoDeviceController.ExposureControl.SetValueAsync(value);
+        }
+
+        private async void ExposureCheckBox_CheckedChanged(object sender, RoutedEventArgs e)
+        {
+            var autoExposure = ((sender as CheckBox).IsChecked == true);
+            await _webcamMediaCapture.VideoDeviceController.ExposureControl.SetAutoAsync(autoExposure);
+        }
+
+        private async void WbComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var selected = (ColorTemperaturePreset)WbComboBox.SelectedItem;
+            WbSlider.IsEnabled = (selected == ColorTemperaturePreset.Manual);
+            await _webcamMediaCapture.VideoDeviceController.WhiteBalanceControl.SetPresetAsync(selected);
+
+        }
+
+        private async void WbSlider_ValueChanged(object sender, Windows.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
+        {
+            var value = (sender as Slider).Value;
+            await _webcamMediaCapture.VideoDeviceController.WhiteBalanceControl.SetValueAsync((uint)value);
         }
     }
 }

@@ -19,53 +19,67 @@
         </Grid.RowDefinitions>
 
         <Grid Grid.Column="0" Grid.RowSpan="2">
-            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                <TextBlock Text="storage options" Style="{StaticResource SubheaderTextBlockStyle}" HorizontalAlignment="Stretch" HorizontalTextAlignment="Center" />
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock VerticalAlignment="Center" MinWidth="50" Margin="10">Folder:</TextBlock>
-                    <TextBlock x:Name="FolderName" VerticalAlignment="Center" MinWidth="220" Margin="10"></TextBlock>
-                    <Button x:Name="BtnFolderPicker" Content="Browse" Click="BtnFolderPicker_Click"></Button>
+            <ScrollViewer>
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextBlock Text="storage options" Style="{StaticResource SubheaderTextBlockStyle}" HorizontalAlignment="Stretch" HorizontalTextAlignment="Center" />
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock VerticalAlignment="Center" MinWidth="50" Margin="10">Folder:</TextBlock>
+                        <TextBlock x:Name="FolderName" VerticalAlignment="Center" MinWidth="220" Margin="10"></TextBlock>
+                        <Button x:Name="BtnFolderPicker" Content="Browse" Click="BtnFolderPicker_Click"></Button>
+                    </StackPanel>
+
+                    <TextBlock Text="screen options" Style="{StaticResource SubheaderTextBlockStyle}" HorizontalAlignment="Stretch" HorizontalTextAlignment="Center" />
+
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock VerticalAlignment="Center" MinWidth="150" Margin="10">Screen Quality:</TextBlock>
+                        <ComboBox x:Name="QualityComboBox" Margin="10" MinWidth="200" HorizontalAlignment="Center"/>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock VerticalAlignment="Center" MinWidth="150" Margin="10">Framerate:</TextBlock>
+                        <ComboBox x:Name="FrameRateComboBox" Margin="10" MinWidth="200" HorizontalAlignment="Center" />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal">
+                        <CheckBox x:Name="UseCaptureItemSizeCheckBox" HorizontalAlignment="Center" Margin="10" Content="Use source size as video resolution" VerticalAlignment="Top" IsChecked="False" MaxWidth="200"/>
+                        <CheckBox x:Name="AdaptBitrateCheckBox" HorizontalAlignment="Center" Margin="10" Content="Bitrate Adaptation" VerticalAlignment="Top" IsChecked="False" MaxWidth="200"/>
+                    </StackPanel>
+
+                    <TextBlock Text="webcam options" Style="{StaticResource SubheaderTextBlockStyle}" HorizontalAlignment="Stretch" HorizontalTextAlignment="Center" />
+
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock VerticalAlignment="Center" MinWidth="150" Margin="10">Webcam:</TextBlock>
+                        <ComboBox x:Name="WebcamDeviceComboBox" Margin="10" MinWidth="200" SelectionChanged="WebcamDeviceComboBox_SelectionChanged" />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock VerticalAlignment="Center" MinWidth="150" Margin="10">Webcam Quality:</TextBlock>
+                        <ComboBox x:Name="WebcamComboBox" Margin="10" MinWidth="200" SelectionChanged="WebcamComboBox_SelectionChanged" />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock VerticalAlignment="Center" MinWidth="150" Margin="10">Exposure:</TextBlock>
+                        <Slider Margin="10" MinWidth="150" Name="ExposureSlider" ValueChanged="ExposureSlider_ValueChanged"/>
+                        <TextBlock VerticalAlignment="Center" MinWidth="30" TextAlignment="Center" Name="ExposureTextBlock" Text="{Binding ElementName=ExposureSlider,Path=Value}"/>
+                        <CheckBox Name="ExposureAutoCheckBox" Content="Auto" Checked="ExposureCheckBox_CheckedChanged" Unchecked="ExposureCheckBox_CheckedChanged"/>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock VerticalAlignment="Center" MinWidth="150" Margin="10">White balance:</TextBlock>
+                        <Slider Margin="10" MinWidth="150" Name="WbSlider" ValueChanged="WbSlider_ValueChanged"/>
+                        <TextBlock VerticalAlignment="Center" MinWidth="30" TextAlignment="Center" Name="WbTextBox" Text="{Binding ElementName=WbSlider,Path=Value}" Visibility="{Binding ElementName=WbSlider,Path=Visibility}"/>
+                        <ComboBox Name="WbComboBox" SelectionChanged="WbComboBox_SelectionChanged"/>
+                    </StackPanel>
+
+                    <TextBlock Text="powerpoint integration" Style="{StaticResource SubheaderTextBlockStyle}" HorizontalAlignment="Stretch" HorizontalTextAlignment="Center" />
+
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock VerticalAlignment="Center" MinWidth="150" Margin="10">PowerPoint Status:</TextBlock>
+                        <TextBlock x:Name="PowerPointGreen" FontFamily="Segoe MDL2 Assets" Visibility="Collapsed" FontSize="32" Foreground="Green">&#xE73E;</TextBlock>
+                        <TextBlock x:Name="PowerPointRed" FontFamily="Segoe MDL2 Assets" Visibility="Collapsed" FontSize="32" Foreground="Red">&#xE711;</TextBlock>
+                    </StackPanel>
                 </StackPanel>
-                
-                <TextBlock Text="screen options" Style="{StaticResource SubheaderTextBlockStyle}" HorizontalAlignment="Stretch" HorizontalTextAlignment="Center" />
-
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock VerticalAlignment="Center" MinWidth="150" Margin="10">Screen Quality:</TextBlock>
-                    <ComboBox x:Name="QualityComboBox" Margin="10" MinWidth="200" HorizontalAlignment="Center"/>
-                </StackPanel>
-
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock VerticalAlignment="Center" MinWidth="150" Margin="10">Framerate:</TextBlock>
-                    <ComboBox x:Name="FrameRateComboBox" Margin="10" MinWidth="200" HorizontalAlignment="Center" />
-                </StackPanel>
-
-                <StackPanel Orientation="Horizontal">
-                    <CheckBox x:Name="UseCaptureItemSizeCheckBox" HorizontalAlignment="Center" Margin="10" Content="Use source size as video resolution" VerticalAlignment="Top" IsChecked="False" MaxWidth="200"/>
-                    <CheckBox x:Name="AdaptBitrateCheckBox" HorizontalAlignment="Center" Margin="10" Content="Bitrate Adaptation" VerticalAlignment="Top" IsChecked="False" MaxWidth="200"/>
-                </StackPanel>
-
-                <TextBlock Text="webcam options" Style="{StaticResource SubheaderTextBlockStyle}" HorizontalAlignment="Stretch" HorizontalTextAlignment="Center" />
-
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock VerticalAlignment="Center" MinWidth="150" Margin="10">Webcam:</TextBlock>
-                    <ComboBox x:Name="WebcamDeviceComboBox" Margin="10" MinWidth="200" SelectionChanged="WebcamDeviceComboBox_SelectionChanged" />
-                </StackPanel>
-
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock VerticalAlignment="Center" MinWidth="150" Margin="10">Webcam Quality:</TextBlock>
-                    <ComboBox x:Name="WebcamComboBox" Margin="10" MinWidth="200" SelectionChanged="WebcamComboBox_SelectionChanged" />
-                </StackPanel>
-
-                <StackPanel Orientation="Horizontal"/>
-
-                <TextBlock Text="powerpoint integration" Style="{StaticResource SubheaderTextBlockStyle}" HorizontalAlignment="Stretch" HorizontalTextAlignment="Center" />
-
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock VerticalAlignment="Center" MinWidth="150" Margin="10">PowerPoint Status:</TextBlock>
-                    <TextBlock x:Name="PowerPointGreen" FontFamily="Segoe MDL2 Assets" Visibility="Collapsed" FontSize="32" Foreground="Green">&#xE73E;</TextBlock>
-                    <TextBlock x:Name="PowerPointRed" FontFamily="Segoe MDL2 Assets" Visibility="Collapsed" FontSize="32" Foreground="Red">&#xE711;</TextBlock>
-                </StackPanel>
-            </StackPanel>
+            </ScrollViewer>
         </Grid>
 
         <Grid Grid.Column="1">
