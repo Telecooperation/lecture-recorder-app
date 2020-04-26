@@ -593,6 +593,11 @@ namespace SimpleRecorder
             if (_webcamMediaCapture.VideoDeviceController.WhiteBalance.Capabilities.AutoModeSupported)
             {
                 _webcamMediaCapture.VideoDeviceController.WhiteBalance.TrySetAuto(WbAutoCheckBox.IsChecked.Value);
+
+                if (!WbAutoCheckBox.IsChecked.Value)
+                {
+                    _webcamMediaCapture.VideoDeviceController.WhiteBalance.TrySetValue(WbSlider.Value);
+                }
             }
         }
 
@@ -712,6 +717,11 @@ namespace SimpleRecorder
             else
             {
                 _webcamMediaCapture.VideoDeviceController.Exposure.TrySetAuto(autoExposure);
+
+                if (!autoExposure)
+                {
+                    _webcamMediaCapture.VideoDeviceController.Exposure.TrySetValue(ExposureSlider.Value);
+                }
             }
         }
 
