@@ -16,7 +16,8 @@
         <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center" Width="450">
             <TextBox Header="Title" VerticalAlignment="Center" x:Name="TxtRecordingTitle" />
 
-            <DatePicker Header="Lecture date" Margin="0,24,0,0" x:Name="DatePickerRecording" />
+            <DatePicker Header="Publishing date" Margin="0,24,0,0" x:Name="DatePickerRecording" />
+            <TimePicker Header="Publishing time" Margin="0,24,0,0" x:Name="TimePickerRecording" ClockIdentifier="24HourClock" />
         </StackPanel>
     </Grid>
 </ContentDialog>

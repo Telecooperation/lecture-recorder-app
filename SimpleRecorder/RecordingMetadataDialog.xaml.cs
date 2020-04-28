@@ -22,11 +22,14 @@ namespace SimpleRecorder
         public RecordingMetadataDialog()
         {
             this.InitializeComponent();
+
+            DatePickerRecording.Date = DateTime.Now.Date;
+            TimePickerRecording.Time = DateTime.Now.TimeOfDay;
         }
 
         public string LectureTitle { get => TxtRecordingTitle.Text; }
 
-        public DateTimeOffset? LectureDate { get => DatePickerRecording.SelectedDate; }
+        public DateTimeOffset? LectureDate { get => DatePickerRecording.SelectedDate.HasValue ? DatePickerRecording.SelectedDate.Value.Date + TimePickerRecording.Time : DateTime.Now; }
 
         private void ContentDialog_PrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
         {
