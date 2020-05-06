@@ -24,7 +24,7 @@ namespace SimpleRecorder
             this.InitializeComponent();
 
             DatePickerRecording.Date = DateTime.Now.Date;
-            TimePickerRecording.Time = DateTime.Now.TimeOfDay;
+            TimePickerRecording.Time = new TimeSpan(0, 1, 0);
         }
 
         public string LectureTitle { get => TxtRecordingTitle.Text; }
