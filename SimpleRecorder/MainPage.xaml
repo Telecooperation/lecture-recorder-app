@@ -11,8 +11,7 @@
 
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="0.2*" />
-            <ColumnDefinition Width="0.6*" />
+            <ColumnDefinition Width="0.8*" />
             <ColumnDefinition Width="0.2*" />
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
@@ -20,7 +19,7 @@
             <RowDefinition Height="270" />
         </Grid.RowDefinitions>
 
-        <muxc:TabView Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="2" AllowDropTabs="False" CanReorderTabs="False" IsAddTabButtonVisible="False">
+        <muxc:TabView Grid.Column="0" Grid.Row="1" AllowDropTabs="False" CanReorderTabs="False" IsAddTabButtonVisible="False">
             <muxc:TabViewItem Header="Storage" IsSelected="True" IsClosable="False">
                 <StackPanel Margin="10">
                     <StackPanel Orientation="Horizontal">
@@ -113,7 +112,7 @@
             </StackPanel>
         </Grid>
 
-        <Grid Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="2">
+        <Grid Grid.Column="0" Grid.Row="0">
             <CaptureElement x:Name="WebcamPreview"/>
         </Grid>
     </Grid>
