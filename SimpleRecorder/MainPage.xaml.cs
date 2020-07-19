@@ -727,5 +727,11 @@ namespace SimpleRecorder
                 _webcamMediaCapture.VideoDeviceController.WhiteBalance.TrySetValue(value);
             }
         }
+
+        private async void Button_Click(object sender, RoutedEventArgs e)
+        {
+            var uploadDialog = new UploadRecordingPage();
+            var result = await uploadDialog.ShowAsync();
+        }
     }
 }

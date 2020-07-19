@@ -132,10 +132,16 @@
     <Compile Include="MainPage.xaml.cs">
       <DependentUpon>MainPage.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Model\Lecture.cs" />
     <Compile Include="Model\Recording.cs" />
+    <Compile Include="Model\Semester.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RecordingMetadataDialog.xaml.cs">
       <DependentUpon>RecordingMetadataDialog.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Services\BackendService.cs" />
+    <Compile Include="UploadRecordingPage.xaml.cs">
+      <DependentUpon>UploadRecordingPage.xaml</DependentUpon>
     </Compile>
   </ItemGroup>
   <ItemGroup>
@@ -164,6 +170,10 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="RecordingMetadataDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="UploadRecordingPage.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

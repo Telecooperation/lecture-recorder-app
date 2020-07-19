@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net;
 using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
 using Windows.ApplicationModel.AppService;
@@ -28,6 +29,8 @@ namespace SimpleRecorder
         {
             this.InitializeComponent();
             this.Suspending += OnSuspending;
+
+            ServicePointManager.ServerCertificateValidationCallback += (sender, cert, chain, sslPolicyErrors) => true;
         }
 
         protected override void OnBackgroundActivated(BackgroundActivatedEventArgs args)
