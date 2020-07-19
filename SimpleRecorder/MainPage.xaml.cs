@@ -6,11 +6,9 @@ using SimpleRecorder.Model;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Windows.ApplicationModel;
 using Windows.ApplicationModel.AppService;
-using Windows.ApplicationModel.ExtendedExecution;
 using Windows.ApplicationModel.ExtendedExecution.Foreground;
 using Windows.Devices.Enumeration;
 using Windows.Graphics.Capture;
@@ -22,7 +20,6 @@ using Windows.Media.MediaProperties;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using Windows.UI;
-using Windows.UI.Core;
 using Windows.UI.Popups;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
@@ -38,6 +35,8 @@ namespace SimpleRecorder
 
         private MediaCapture _webcamMediaCapture;
         private LowLagMediaRecording _webcamMediaRecording;
+
+        private AudioGraph graph;
 
         private StorageFolder _storageFolder = null;
         private GraphicsCaptureItem _item = null;
@@ -81,7 +80,7 @@ namespace SimpleRecorder
 
         private async Task LoadSettings()
         {
-            var settings = GetCachedSettings();
+            var settings = AppSettingsContainer.GetCachedSettings();
 
             // load quality settings
             var names = new List<string>
@@ -129,11 +128,10 @@ namespace SimpleRecorder
                 comboBox.Items.Add(comboBoxItem);
             }
 
-            var settings = GetCachedSettings();
+            var settings = AppSettingsContainer.GetCachedSettings();
             comboBox.SelectedItem = WebcamComboBox.Items.Where(x => (x as ComboBoxItem).Content.ToString() == settings.WebcamQuality).FirstOrDefault();
         }
 
-        private AudioGraph graph;
         private async Task InitAudioMeterAsync()
         {
             var result = await AudioGraph.CreateAsync(new AudioGraphSettings(Windows.Media.Render.AudioRenderCategory.Speech));
@@ -254,7 +252,7 @@ namespace SimpleRecorder
             button.IsEnabled = true;
 
             MainTextBlock.Text = "● rec";
-            
+
             _timerCount = 0;
             _timer.Start();
 
@@ -407,7 +405,7 @@ namespace SimpleRecorder
 
         private AppSettings GetCurrentSettings()
         {
-            var quality = ParseEnumValue<VideoEncodingQuality>((string)QualityComboBox.SelectedItem);
+            var quality = AppSettingsContainer.ParseEnumValue<VideoEncodingQuality>((string)QualityComboBox.SelectedItem);
             var frameRate = uint.Parse(((string)FrameRateComboBox.SelectedItem).Replace("fps", ""));
             var useSourceSize = UseCaptureItemSizeCheckBox.IsChecked.Value;
             var adaptBitrate = AdaptBitrateCheckBox.IsChecked.Value;
@@ -429,91 +427,10 @@ namespace SimpleRecorder
             };
         }
 
-        private AppSettings GetCachedSettings()
-        {
-            var localSettings = ApplicationData.Current.LocalSettings;
-            var result = new AppSettings
-            {
-                Quality = VideoEncodingQuality.HD1080p,
-                FrameRate = 60,
-                UseSourceSize = true,
-                AdaptBitrate = true,
-                WebcamExposureAuto = true,
-                WebcamWhiteBalanceAuto = true
-            };
-            if (localSettings.Values.TryGetValue(nameof(AppSettings.Quality), out var quality))
-            {
-                result.Quality = ParseEnumValue<VideoEncodingQuality>((string)quality);
-            }
-            if (localSettings.Values.TryGetValue(nameof(AppSettings.FrameRate), out var frameRate))
-            {
-                result.FrameRate = (uint)frameRate;
-            }
-            if (localSettings.Values.TryGetValue(nameof(AppSettings.UseSourceSize), out var useSourceSize))
-            {
-                result.UseSourceSize = (bool)useSourceSize;
-            }
-            if (localSettings.Values.TryGetValue(nameof(AppSettings.AdaptBitrate), out var adaptBitrate))
-            {
-                result.AdaptBitrate = (bool)adaptBitrate;
-            }
-            if (localSettings.Values.TryGetValue(nameof(AppSettings.StorageFolder), out var storageFolder))
-            {
-                result.StorageFolder = (string)storageFolder;
-            }
-            if (localSettings.Values.TryGetValue(nameof(AppSettings.WebcamQuality), out var webcamQuality))
-            {
-                result.WebcamQuality = webcamQuality as string;
-            }
-            if (localSettings.Values.TryGetValue(nameof(AppSettings.WebcamDeviceId), out var webcamDeviceId))
-            {
-                result.WebcamDeviceId = webcamDeviceId as string;
-            }
-            if (localSettings.Values.TryGetValue(nameof(AppSettings.WebcamExposure), out var webcamExposure))
-            {
-                result.WebcamExposure = (long)webcamExposure;
-            }
-            if (localSettings.Values.TryGetValue(nameof(AppSettings.WebcamExposureAuto), out var webcamExposureAuto))
-            {
-                result.WebcamExposureAuto = (bool)webcamExposureAuto;
-            }
-            if (localSettings.Values.TryGetValue(nameof(AppSettings.WebcamWhiteBalance), out var webcamWhiteBalance))
-            {
-                result.WebcamWhiteBalance = (uint)webcamWhiteBalance;
-            }
-            if (localSettings.Values.TryGetValue(nameof(AppSettings.WebcamWhiteBalanceAuto), out var webcamWhiteBalanceAuto))
-            {
-                result.WebcamWhiteBalanceAuto = (bool)webcamWhiteBalanceAuto;
-            }
-
-            return result;
-        }
-
         public void CacheCurrentSettings()
         {
             var settings = GetCurrentSettings();
-            CacheSettings(settings);
-        }
-
-        private static void CacheSettings(AppSettings settings)
-        {
-            var localSettings = ApplicationData.Current.LocalSettings;
-            localSettings.Values[nameof(AppSettings.Quality)] = settings.Quality.ToString();
-            localSettings.Values[nameof(AppSettings.FrameRate)] = settings.FrameRate;
-            localSettings.Values[nameof(AppSettings.UseSourceSize)] = settings.UseSourceSize;
-            localSettings.Values[nameof(AppSettings.AdaptBitrate)] = settings.AdaptBitrate;
-            localSettings.Values[nameof(AppSettings.StorageFolder)] = settings.StorageFolder;
-            localSettings.Values[nameof(AppSettings.WebcamDeviceId)] = settings.WebcamDeviceId;
-            localSettings.Values[nameof(AppSettings.WebcamQuality)] = settings.WebcamQuality;
-            localSettings.Values[nameof(AppSettings.WebcamExposure)] = settings.WebcamExposure;
-            localSettings.Values[nameof(AppSettings.WebcamExposureAuto)] = settings.WebcamExposureAuto;
-            localSettings.Values[nameof(AppSettings.WebcamWhiteBalance)] = settings.WebcamWhiteBalance;
-            localSettings.Values[nameof(AppSettings.WebcamWhiteBalanceAuto)] = settings.WebcamWhiteBalanceAuto;
-        }
-
-        private static T ParseEnumValue<T>(string input)
-        {
-            return (T)Enum.Parse(typeof(T), input, false);
+            AppSettingsContainer.CacheSettings(settings);
         }
 
         private async Task InitWebcamDevicesAsync()
@@ -672,7 +589,7 @@ namespace SimpleRecorder
             SetWhiteBalanceControl();
 
             // load settings
-            var settings = GetCachedSettings();
+            var settings = AppSettingsContainer.GetCachedSettings();
 
             if (ExposureAutoCheckBox.Visibility == Visibility.Visible && ExposureSlider.Visibility == Visibility.Visible)
             {
@@ -789,12 +706,6 @@ namespace SimpleRecorder
             }
         }
 
-        private async void EvSlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
-        {
-            var value = (sender as Slider).Value;
-            await _webcamMediaCapture.VideoDeviceController.ExposureCompensationControl.SetValueAsync((float)value);
-        }
-
         private async void WbComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             var selected = (ColorTemperaturePreset)WbComboBox.SelectedItem;
@@ -803,7 +714,7 @@ namespace SimpleRecorder
 
         }
 
-        private async void WbSlider_ValueChanged(object sender, Windows.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
+        private async void WbSlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
         {
             var value = (sender as Slider).Value;
 
