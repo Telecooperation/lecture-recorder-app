@@ -83,10 +83,13 @@ namespace SimpleRecorder
         {
             var settings = GetCachedSettings();
 
-            var names = new List<string>();
-            names.Add(nameof(VideoEncodingQuality.HD1080p));
-            names.Add(nameof(VideoEncodingQuality.HD720p));
-            names.Add(nameof(VideoEncodingQuality.Uhd2160p));
+            // load quality settings
+            var names = new List<string>
+            {
+                nameof(VideoEncodingQuality.HD1080p),
+                nameof(VideoEncodingQuality.HD720p),
+                nameof(VideoEncodingQuality.Uhd2160p)
+            };
             QualityComboBox.ItemsSource = names;
             QualityComboBox.SelectedIndex = names.IndexOf(settings.Quality.ToString());
 
@@ -97,12 +100,14 @@ namespace SimpleRecorder
             UseCaptureItemSizeCheckBox.IsChecked = settings.UseSourceSize;
             AdaptBitrateCheckBox.IsChecked = settings.AdaptBitrate;
 
+            // load default storage path
             if (!string.IsNullOrEmpty(settings.StorageFolder))
             {
                 FolderName.Text = settings.StorageFolder;
                 _storageFolder = await StorageFolder.GetFolderFromPathAsync(settings.StorageFolder);
             }
 
+            // set first webcam device
             WebcamDeviceComboBox.SelectedItem = WebcamDeviceComboBox.Items.Where(x => (x as ComboBoxItem).Tag.ToString() == settings.WebcamDeviceId).FirstOrDefault();
         }
 
@@ -126,6 +131,25 @@ namespace SimpleRecorder
 
             var settings = GetCachedSettings();
             comboBox.SelectedItem = WebcamComboBox.Items.Where(x => (x as ComboBoxItem).Content.ToString() == settings.WebcamQuality).FirstOrDefault();
+        }
+
+        private AudioGraph graph;
+        private async Task InitAudioMeterAsync()
+        {
+            var result = await AudioGraph.CreateAsync(new AudioGraphSettings(Windows.Media.Render.AudioRenderCategory.Speech));
+            if (result.Status == AudioGraphCreationStatus.Success)
+            {
+                this.graph = result.Graph;
+
+                var microphone = await DeviceInformation.CreateFromIdAsync(MediaDevice.GetDefaultAudioCaptureId(AudioDeviceRole.Default));
+                var inProfile = MediaEncodingProfile.CreateWav(AudioEncodingQuality.High);
+                var inputResult = await this.graph.CreateDeviceInputNodeAsync(MediaCategory.Speech, inProfile.Audio, microphone);
+
+                this.graph.Start();
+
+                var source = PlaybackSource.CreateFromAudioNode(inputResult.DeviceInputNode);
+                AudioDiscreteVUBar.Source = source.Source;
+            }
         }
 
         private async Task InitWebcamAsync(string deviceId)
@@ -717,6 +741,8 @@ namespace SimpleRecorder
             await InitWebcamDevicesAsync();
 
             await LoadSettings();
+
+            await InitAudioMeterAsync();
         }
 
         private async void BtnFolderPicker_Click(object sender, RoutedEventArgs e)
