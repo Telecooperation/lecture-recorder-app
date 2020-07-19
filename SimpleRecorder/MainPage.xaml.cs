@@ -1,10 +1,12 @@
-﻿using CaptureUtils;
+﻿using AudioVisualizer;
+using CaptureUtils;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using SimpleRecorder.Model;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Windows.ApplicationModel;
 using Windows.ApplicationModel.AppService;
@@ -13,12 +15,14 @@ using Windows.ApplicationModel.ExtendedExecution.Foreground;
 using Windows.Devices.Enumeration;
 using Windows.Graphics.Capture;
 using Windows.Graphics.DirectX.Direct3D11;
+using Windows.Media.Audio;
 using Windows.Media.Capture;
 using Windows.Media.Devices;
 using Windows.Media.MediaProperties;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using Windows.UI;
+using Windows.UI.Core;
 using Windows.UI.Popups;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
@@ -37,6 +41,9 @@ namespace SimpleRecorder
 
         private StorageFolder _storageFolder = null;
         private GraphicsCaptureItem _item = null;
+
+        private DispatcherTimer _timer = new DispatcherTimer();
+        private long _timerCount = 0;
 
         public MainPage()
         {
@@ -59,9 +66,20 @@ namespace SimpleRecorder
 
             // connect to the powerpoint app service
             App.AppServiceConnected += MainPage_AppServiceConnected;
+
+            _timer.Interval = new TimeSpan(0, 0, 1);
+            _timer.Tick += _timer_Tick;
         }
 
-        private void LoadSettings()
+        private void _timer_Tick(object sender, object e)
+        {
+            _timerCount += 1;
+
+            TimeSpan time = TimeSpan.FromSeconds(_timerCount);
+            TimerCounter.Text = time.ToString(@"hh\:mm\:ss");
+        }
+
+        private async Task LoadSettings()
         {
             var settings = GetCachedSettings();
 
@@ -78,6 +96,12 @@ namespace SimpleRecorder
 
             UseCaptureItemSizeCheckBox.IsChecked = settings.UseSourceSize;
             AdaptBitrateCheckBox.IsChecked = settings.AdaptBitrate;
+
+            if (!string.IsNullOrEmpty(settings.StorageFolder))
+            {
+                FolderName.Text = settings.StorageFolder;
+                _storageFolder = await StorageFolder.GetFolderFromPathAsync(settings.StorageFolder);
+            }
 
             WebcamDeviceComboBox.SelectedItem = WebcamDeviceComboBox.Items.Where(x => (x as ComboBoxItem).Tag.ToString() == settings.WebcamDeviceId).FirstOrDefault();
         }
@@ -154,7 +178,7 @@ namespace SimpleRecorder
             var useSourceSize = UseCaptureItemSizeCheckBox.IsChecked.Value;
 
             var temp = MediaEncodingProfile.CreateMp4(quality);
-            uint bitrate = 2500000; // temp.Video.Bitrate; // 18 000 000
+            uint bitrate = 2500000;
             var width = temp.Video.Width;
             var height = temp.Video.Height;
 
@@ -172,7 +196,6 @@ namespace SimpleRecorder
             {
                 width = (uint)_item.Size.Width;
                 height = (uint)_item.Size.Height;
-
             }
 
             // we have a screen resolution of more than 4K?
@@ -180,7 +203,7 @@ namespace SimpleRecorder
             {
                 var v = width / 1920;
                 width = 1920;
-                height = height / v;
+                height /= v;
             }
 
             // even if we're using the capture item's real size,
@@ -195,18 +218,21 @@ namespace SimpleRecorder
 
             button.IsEnabled = false;
 
-            MainTextBlock.Text = "3 ...";
+            MainTextBlock.Text = "3";
             await Task.Delay(1000);
 
-            MainTextBlock.Text = "2 ...";
+            MainTextBlock.Text = "2";
             await Task.Delay(1000);
 
-            MainTextBlock.Text = "1 ...";
+            MainTextBlock.Text = "1";
             await Task.Delay(1000);
 
             button.IsEnabled = true;
 
             MainTextBlock.Text = "● rec";
+            
+            _timerCount = 0;
+            _timer.Start();
 
             try
             {
@@ -262,9 +288,12 @@ namespace SimpleRecorder
                 // user has finished recording, so stop webcam recording
                 await _webcamMediaRecording.StopAsync();
                 await _webcamMediaRecording.FinishAsync();
+                _timer.Stop();
             }
             catch (Exception ex)
             {
+                _timer.Stop();
+
                 var dialog = new MessageDialog(
                     $"Uh-oh! Something went wrong!\n0x{ex.HResult:X8} - {ex.Message}",
                     "Recording failed");
@@ -295,8 +324,10 @@ namespace SimpleRecorder
                 Slides = _screenEncoder.GetTimestamps()
             };
 
-            var settings = new JsonSerializerSettings();
-            settings.ContractResolver = new CamelCasePropertyNamesContractResolver();
+            var settings = new JsonSerializerSettings
+            {
+                ContractResolver = new CamelCasePropertyNamesContractResolver()
+            };
 
             var json = JsonConvert.SerializeObject(recording, Formatting.Indented, settings);
             await FileIO.WriteTextAsync(jsonFile, json);
@@ -366,6 +397,7 @@ namespace SimpleRecorder
                 WebcamDeviceId = (WebcamDeviceComboBox.SelectedItem as ComboBoxItem).Tag.ToString(),
                 WebcamQuality = webcamQuality,
                 AdaptBitrate = adaptBitrate,
+                StorageFolder = _storageFolder.Path,
                 WebcamExposure = (long)ExposureSlider.Value,
                 WebcamWhiteBalance = (uint)WbSlider.Value,
                 WebcamExposureAuto = ExposureAutoCheckBox.IsChecked.HasValue ? ExposureAutoCheckBox.IsChecked.Value : true,
@@ -400,6 +432,10 @@ namespace SimpleRecorder
             if (localSettings.Values.TryGetValue(nameof(AppSettings.AdaptBitrate), out var adaptBitrate))
             {
                 result.AdaptBitrate = (bool)adaptBitrate;
+            }
+            if (localSettings.Values.TryGetValue(nameof(AppSettings.StorageFolder), out var storageFolder))
+            {
+                result.StorageFolder = (string)storageFolder;
             }
             if (localSettings.Values.TryGetValue(nameof(AppSettings.WebcamQuality), out var webcamQuality))
             {
@@ -442,6 +478,7 @@ namespace SimpleRecorder
             localSettings.Values[nameof(AppSettings.FrameRate)] = settings.FrameRate;
             localSettings.Values[nameof(AppSettings.UseSourceSize)] = settings.UseSourceSize;
             localSettings.Values[nameof(AppSettings.AdaptBitrate)] = settings.AdaptBitrate;
+            localSettings.Values[nameof(AppSettings.StorageFolder)] = settings.StorageFolder;
             localSettings.Values[nameof(AppSettings.WebcamDeviceId)] = settings.WebcamDeviceId;
             localSettings.Values[nameof(AppSettings.WebcamQuality)] = settings.WebcamQuality;
             localSettings.Values[nameof(AppSettings.WebcamExposure)] = settings.WebcamExposure;
@@ -675,17 +712,18 @@ namespace SimpleRecorder
 
         private async void Page_Loaded(object sender, RoutedEventArgs e)
         {
+            // load external app and init webcam
             await FullTrustProcessLauncher.LaunchFullTrustProcessForCurrentAppAsync();
             await InitWebcamDevicesAsync();
 
-            LoadSettings();
+            await LoadSettings();
         }
 
         private async void BtnFolderPicker_Click(object sender, RoutedEventArgs e)
         {
             var folderPicker = new FolderPicker();
-            folderPicker.ViewMode = Windows.Storage.Pickers.PickerViewMode.List;
-            folderPicker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.VideosLibrary;
+            folderPicker.ViewMode = PickerViewMode.List;
+            folderPicker.SuggestedStartLocation = PickerLocationId.VideosLibrary;
             folderPicker.FileTypeFilter.Add("*");
 
             _storageFolder = await folderPicker.PickSingleFolderAsync();

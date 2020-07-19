@@ -5,95 +5,114 @@
     xmlns:local="using:SimpleRecorder"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:muxc="using:Microsoft.UI.Xaml.Controls" xmlns:visualizer="using:AudioVisualizer"
     mc:Ignorable="d"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Loaded="Page_Loaded">
 
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition />
-            <ColumnDefinition />
+            <ColumnDefinition Width="0.2*" />
+            <ColumnDefinition Width="0.6*" />
+            <ColumnDefinition Width="0.2*" />
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
             <RowDefinition />
-            <RowDefinition />
+            <RowDefinition Height="270" />
         </Grid.RowDefinitions>
 
-        <Grid Grid.Column="0" Grid.RowSpan="2">
-            <ScrollViewer>
-                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <TextBlock Text="storage options" Style="{StaticResource SubheaderTextBlockStyle}" HorizontalAlignment="Stretch" HorizontalTextAlignment="Center" />
+        <muxc:TabView Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="2" AllowDropTabs="False" CanReorderTabs="False" IsAddTabButtonVisible="False">
+            <muxc:TabViewItem Header="Storage" IsSelected="True" IsClosable="False">
+                <StackPanel Margin="10">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock VerticalAlignment="Center" MinWidth="50" Margin="10">Folder:</TextBlock>
                         <TextBlock x:Name="FolderName" VerticalAlignment="Center" MinWidth="220" Margin="10"></TextBlock>
                         <Button x:Name="BtnFolderPicker" Content="Browse" Click="BtnFolderPicker_Click"></Button>
                     </StackPanel>
+                </StackPanel>
+            </muxc:TabViewItem>
+            <muxc:TabViewItem Header="Screen Recording" IsClosable="False">
+                <Grid Margin="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="150"/>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="150"/>
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition />
+                        <RowDefinition />
+                    </Grid.RowDefinitions>
 
-                    <TextBlock Text="screen options" Style="{StaticResource SubheaderTextBlockStyle}" HorizontalAlignment="Stretch" HorizontalTextAlignment="Center" />
+                    <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Margin="10">Screen Quality:</TextBlock>
+                    <ComboBox Grid.Row="0" Grid.Column="1" x:Name="QualityComboBox" Margin="10" HorizontalAlignment="Stretch"/>
 
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock VerticalAlignment="Center" MinWidth="150" Margin="10">Screen Quality:</TextBlock>
-                        <ComboBox x:Name="QualityComboBox" Margin="10" MinWidth="200" HorizontalAlignment="Center"/>
-                    </StackPanel>
+                    <TextBlock Grid.Row="0" Grid.Column="2" VerticalAlignment="Center" Margin="10">Framerate:</TextBlock>
+                    <ComboBox Grid.Row="0" Grid.Column="3" x:Name="FrameRateComboBox" Margin="10" HorizontalAlignment="Stretch" />
 
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock VerticalAlignment="Center" MinWidth="150" Margin="10">Framerate:</TextBlock>
-                        <ComboBox x:Name="FrameRateComboBox" Margin="10" MinWidth="200" HorizontalAlignment="Center" />
-                    </StackPanel>
+                    <CheckBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" x:Name="UseCaptureItemSizeCheckBox" HorizontalAlignment="Stretch" Margin="10" Content="Use source size as video resolution" IsChecked="False"/>
+                    <CheckBox Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="2" x:Name="AdaptBitrateCheckBox" HorizontalAlignment="Stretch" Margin="10" Content="Bitrate Adaptation" IsChecked="False"/>
+                </Grid>
+            </muxc:TabViewItem>
+            <muxc:TabViewItem Header="Webcam Recording" IsClosable="False">
+                <Grid Margin="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="150"/>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="150"/>
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition />
+                        <RowDefinition />
+                    </Grid.RowDefinitions>
 
-                    <StackPanel Orientation="Horizontal">
-                        <CheckBox x:Name="UseCaptureItemSizeCheckBox" HorizontalAlignment="Center" Margin="10" Content="Use source size as video resolution" VerticalAlignment="Top" IsChecked="False" MaxWidth="200"/>
-                        <CheckBox x:Name="AdaptBitrateCheckBox" HorizontalAlignment="Center" Margin="10" Content="Bitrate Adaptation" VerticalAlignment="Top" IsChecked="False" MaxWidth="200"/>
-                    </StackPanel>
+                    <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" MinWidth="150" Margin="10">Webcam:</TextBlock>
+                    <ComboBox Grid.Row="0" Grid.Column="1" x:Name="WebcamDeviceComboBox" Margin="10" HorizontalAlignment="Stretch" SelectionChanged="WebcamDeviceComboBox_SelectionChanged" />
 
-                    <TextBlock Text="webcam options" Style="{StaticResource SubheaderTextBlockStyle}" HorizontalAlignment="Stretch" HorizontalTextAlignment="Center" />
+                    <TextBlock Grid.Row="0" Grid.Column="2" VerticalAlignment="Center" MinWidth="150" Margin="10">Webcam Quality:</TextBlock>
+                    <ComboBox Grid.Row="0" Grid.Column="3" x:Name="WebcamComboBox" Margin="10" HorizontalAlignment="Stretch" SelectionChanged="WebcamComboBox_SelectionChanged" />
 
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock VerticalAlignment="Center" MinWidth="150" Margin="10">Webcam:</TextBlock>
-                        <ComboBox x:Name="WebcamDeviceComboBox" Margin="10" MinWidth="200" SelectionChanged="WebcamDeviceComboBox_SelectionChanged" />
-                    </StackPanel>
-
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock VerticalAlignment="Center" MinWidth="150" Margin="10">Webcam Quality:</TextBlock>
-                        <ComboBox x:Name="WebcamComboBox" Margin="10" MinWidth="200" SelectionChanged="WebcamComboBox_SelectionChanged" />
-                    </StackPanel>
-
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock VerticalAlignment="Center" MinWidth="150" Margin="10">Exposure:</TextBlock>
+                    <TextBlock Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" MinWidth="150" Margin="10">Exposure:</TextBlock>
+                    <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal">
                         <Slider Margin="10" MinWidth="150" Name="ExposureSlider" ValueChanged="ExposureSlider_ValueChanged"/>
                         <TextBlock VerticalAlignment="Center" MinWidth="30" TextAlignment="Center" Name="ExposureTextBlock" Text="{Binding ElementName=ExposureSlider,Path=Value}"/>
                         <CheckBox Name="ExposureAutoCheckBox" Content="Auto" Checked="ExposureCheckBox_CheckedChanged" Unchecked="ExposureCheckBox_CheckedChanged"/>
                     </StackPanel>
 
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock VerticalAlignment="Center" MinWidth="150" Margin="10">White balance:</TextBlock>
+                    <TextBlock Grid.Row="1" Grid.Column="2" VerticalAlignment="Center" MinWidth="150" Margin="10">White balance:</TextBlock>
+                    <StackPanel Grid.Row="1" Grid.Column="3" Orientation="Horizontal">
                         <Slider Margin="10" MinWidth="150" Name="WbSlider" ValueChanged="WbSlider_ValueChanged"/>
                         <TextBlock VerticalAlignment="Center" MinWidth="30" TextAlignment="Center" Name="WbTextBox" Text="{Binding ElementName=WbSlider,Path=Value}" Visibility="{Binding ElementName=WbSlider,Path=Visibility}"/>
                         <ComboBox VerticalAlignment="Center" Name="WbComboBox" SelectionChanged="WbComboBox_SelectionChanged"/>
                         <CheckBox Margin="10" Visibility="Collapsed" Name="WbAutoCheckBox" Content="Auto" Checked="WbCheckBox_CheckedChanged" Unchecked="WbCheckBox_CheckedChanged"/>
                     </StackPanel>
+                </Grid>
+            </muxc:TabViewItem>
+        </muxc:TabView>
 
-                    <TextBlock Text="powerpoint integration" Style="{StaticResource SubheaderTextBlockStyle}" HorizontalAlignment="Stretch" HorizontalTextAlignment="Center" />
-
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock VerticalAlignment="Center" MinWidth="150" Margin="10">PowerPoint Status:</TextBlock>
-                        <TextBlock x:Name="PowerPointGreen" FontFamily="Segoe MDL2 Assets" Visibility="Collapsed" FontSize="32" Foreground="Green">&#xE73E;</TextBlock>
-                        <TextBlock x:Name="PowerPointRed" FontFamily="Segoe MDL2 Assets" Visibility="Collapsed" FontSize="32" Foreground="Red">&#xE711;</TextBlock>
-                    </StackPanel>
-                </StackPanel>
-            </ScrollViewer>
-        </Grid>
-
-        <Grid Grid.Column="1">
-            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Width="250">
+        <Grid Grid.Column="2" BorderThickness="1,0,0,0" BorderBrush="Gray">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                 <TextBlock x:Name="MainTextBlock" Text="start recording" Style="{StaticResource HeaderTextBlockStyle}" HorizontalAlignment="Stretch" HorizontalTextAlignment="Center" />
                 <ProgressBar x:Name="MainProgressBar" IsIndeterminate="False" Background="Transparent"/>
                 <ToggleButton Margin="5" HorizontalAlignment="Center" Checked="ToggleButton_Checked" Unchecked="ToggleButton_Unchecked">
                     <FontIcon Glyph="&#xE722;" FontSize="64" FontFamily="Segoe MDL2 Assets"  />
                 </ToggleButton>
+                <TextBlock x:Name="TimerCounter" Text="" Margin="10" FontSize="21" />
             </StackPanel>
         </Grid>
 
-        <Grid Grid.Column="1" Grid.Row="1">
+        <Grid Grid.Row="1" Grid.Column="3" BorderThickness="1,0,0,0" BorderBrush="Gray">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                <visualizer:DiscreteVUBar x:Name="AudioDiscreteVUBar" Height="20" Width="100" />
+                <StackPanel Orientation="Vertical">
+                    <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" Margin="10">PowerPoint Status:</TextBlock>
+                    <TextBlock HorizontalAlignment="Center" x:Name="PowerPointGreen" FontFamily="Segoe MDL2 Assets" Visibility="Collapsed" FontSize="32" Foreground="Green">&#xE73E;</TextBlock>
+                    <TextBlock HorizontalAlignment="Center" x:Name="PowerPointRed" FontFamily="Segoe MDL2 Assets" Visibility="Visible" FontSize="32" Foreground="Red">&#xE711;</TextBlock>
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+
+        <Grid Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="2">
             <CaptureElement x:Name="WebcamPreview"/>
         </Grid>
     </Grid>
