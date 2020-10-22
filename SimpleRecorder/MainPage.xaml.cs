@@ -162,7 +162,8 @@ namespace SimpleRecorder
 
             await _webcamMediaCapture.InitializeAsync(new MediaCaptureInitializationSettings()
             {
-                VideoDeviceId = deviceId
+                VideoDeviceId = deviceId,
+                StreamingCaptureMode = StreamingCaptureMode.AudioAndVideo
             });
 
             WebcamPreview.Source = _webcamMediaCapture;
@@ -726,12 +727,6 @@ namespace SimpleRecorder
             {
                 _webcamMediaCapture.VideoDeviceController.WhiteBalance.TrySetValue(value);
             }
-        }
-
-        private async void Button_Click(object sender, RoutedEventArgs e)
-        {
-            var uploadDialog = new UploadRecordingPage();
-            var result = await uploadDialog.ShowAsync();
         }
     }
 }
