@@ -56,7 +56,7 @@ namespace SimpleRecorder
             }
             if (localSettings.Values.TryGetValue(nameof(AppSettings.WebcamExposure), out var webcamExposure))
             {
-                result.WebcamExposure = (long)webcamExposure;
+                result.WebcamExposure = (double)webcamExposure;
             }
             if (localSettings.Values.TryGetValue(nameof(AppSettings.WebcamExposureAuto), out var webcamExposureAuto))
             {
@@ -64,7 +64,7 @@ namespace SimpleRecorder
             }
             if (localSettings.Values.TryGetValue(nameof(AppSettings.WebcamWhiteBalance), out var webcamWhiteBalance))
             {
-                result.WebcamWhiteBalance = (uint)webcamWhiteBalance;
+                result.WebcamWhiteBalance = (double)webcamWhiteBalance;
             }
             if (localSettings.Values.TryGetValue(nameof(AppSettings.WebcamWhiteBalanceAuto), out var webcamWhiteBalanceAuto))
             {
