@@ -50,7 +50,7 @@ namespace SimpleRecorder
             {
                 result.WebcamDeviceId = webcamDeviceId as string;
             }
-            if (localSettings.Values.TryGetValue(nameof(AppSettings.WebcamDeviceId), out var audioDeviceId))
+            if (localSettings.Values.TryGetValue(nameof(AppSettings.AudioDeviceId), out var audioDeviceId))
             {
                 result.AudioDeviceId = audioDeviceId as string;
             }
