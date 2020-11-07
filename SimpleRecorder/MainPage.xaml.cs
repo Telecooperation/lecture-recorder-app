@@ -78,6 +78,99 @@ namespace SimpleRecorder
             TimerCounter.Text = time.ToString(@"hh\:mm\:ss");
         }
 
+        #region Device initialization
+        private void PopulateStreamPropertiesUI(MediaStreamType streamType, ComboBox comboBox, bool showFrameRate = true)
+        {
+            // query all properties of the specified video stream type 
+            IEnumerable<StreamPropertiesHelper> allStreamProperties =
+                _webcamMediaCapture.VideoDeviceController.GetAvailableMediaStreamProperties(streamType).Select(x => new StreamPropertiesHelper(x));
+
+            // order them by resolution then frame rate
+            allStreamProperties = allStreamProperties.OrderByDescending(x => x.Height * x.Width).ThenByDescending(x => x.FrameRate);
+
+            // populate the combo box with the entries
+            foreach (var property in allStreamProperties)
+            {
+                ComboBoxItem comboBoxItem = new ComboBoxItem();
+                comboBoxItem.Content = property.GetFriendlyName(showFrameRate);
+                comboBoxItem.Tag = property;
+                comboBox.Items.Add(comboBoxItem);
+            }
+
+            var settings = AppSettingsContainer.GetCachedSettings();
+            comboBox.SelectedItem = WebcamComboBox.Items.Where(x => (x as ComboBoxItem).Content.ToString() == settings.WebcamQuality).FirstOrDefault();
+        }
+
+        private async Task InitAudioMeterAsync()
+        {
+            var result = await AudioGraph.CreateAsync(new AudioGraphSettings(Windows.Media.Render.AudioRenderCategory.Speech));
+            if (result.Status == AudioGraphCreationStatus.Success)
+            {
+                this.graph = result.Graph;
+
+                var audioDevice = (AudioDeviceComboBox.SelectedItem as ComboBoxItem);
+                if (audioDevice == null)
+                    return;
+
+                var microphone = await DeviceInformation.CreateFromIdAsync(audioDevice.Tag.ToString());
+                var inProfile = MediaEncodingProfile.CreateWav(AudioEncodingQuality.High);
+                var inputResult = await this.graph.CreateDeviceInputNodeAsync(MediaCategory.Speech, inProfile.Audio, microphone);
+
+                this.graph.Start();
+
+                var source = PlaybackSource.CreateFromAudioNode(inputResult.DeviceInputNode);
+                AudioDiscreteVUBar.Source = source.Source;
+            }
+        }
+
+        private async Task InitWebcamDevicesAsync()
+        {
+            // Finds all video capture devices
+            var videoDevices = await DeviceInformation.FindAllAsync(DeviceClass.VideoCapture);
+
+            foreach (var device in videoDevices)
+            {
+                var comboBoxItem = new ComboBoxItem();
+                comboBoxItem.Content = device.Name;
+                comboBoxItem.Tag = device.Id;
+                WebcamDeviceComboBox.Items.Add(comboBoxItem);
+            }
+
+            // find all audio devices
+            var audioDevices = await DeviceInformation.FindAllAsync(DeviceClass.AudioCapture);
+
+            foreach (var device in audioDevices)
+            {
+                var comboBoxItem = new ComboBoxItem();
+                comboBoxItem.Content = device.Name;
+                comboBoxItem.Tag = device.Id;
+                AudioDeviceComboBox.Items.Add(comboBoxItem);
+            }
+        }
+
+        private async Task InitWebcamAsync(string deviceId, string audioDeviceId)
+        {
+            if (_webcamMediaCapture != null)
+            {
+                await _webcamMediaCapture.StopPreviewAsync();
+            }
+
+            _webcamMediaCapture = new MediaCapture();
+            _webcamMediaCapture.RecordLimitationExceeded += CaptureManager_RecordLimitationExceeded;
+
+            await _webcamMediaCapture.InitializeAsync(new MediaCaptureInitializationSettings()
+            {
+                VideoDeviceId = deviceId,
+                AudioDeviceId = audioDeviceId,
+                StreamingCaptureMode = StreamingCaptureMode.AudioAndVideo
+            });
+
+            WebcamPreview.Source = _webcamMediaCapture;
+            await _webcamMediaCapture.StartPreviewAsync();
+        }
+        #endregion
+
+        #region Settings
         private async Task LoadSettings()
         {
             var settings = AppSettingsContainer.GetCachedSettings();
@@ -108,68 +201,287 @@ namespace SimpleRecorder
 
             // set first webcam device
             WebcamDeviceComboBox.SelectedItem = WebcamDeviceComboBox.Items.Where(x => (x as ComboBoxItem).Tag.ToString() == settings.WebcamDeviceId).FirstOrDefault();
+            AudioDeviceComboBox.SelectedItem = AudioDeviceComboBox.Items.Where(x => (x as ComboBoxItem).Tag.ToString() == settings.AudioDeviceId).FirstOrDefault();
         }
 
-        private void PopulateStreamPropertiesUI(MediaStreamType streamType, ComboBox comboBox, bool showFrameRate = true)
+        private AppSettings GetCurrentSettings()
         {
-            // query all properties of the specified stream type 
-            IEnumerable<StreamPropertiesHelper> allStreamProperties =
-                _webcamMediaCapture.VideoDeviceController.GetAvailableMediaStreamProperties(streamType).Select(x => new StreamPropertiesHelper(x));
+            var quality = AppSettingsContainer.ParseEnumValue<VideoEncodingQuality>((string)QualityComboBox.SelectedItem);
+            var frameRate = uint.Parse(((string)FrameRateComboBox.SelectedItem).Replace("fps", ""));
+            var useSourceSize = UseCaptureItemSizeCheckBox.IsChecked.Value;
+            var adaptBitrate = AdaptBitrateCheckBox.IsChecked.Value;
+            var webcamQuality = (WebcamComboBox.SelectedItem as ComboBoxItem).Content.ToString();
 
-            // order them by resolution then frame rate
-            allStreamProperties = allStreamProperties.OrderByDescending(x => x.Height * x.Width).ThenByDescending(x => x.FrameRate);
-
-            // populate the combo box with the entries
-            foreach (var property in allStreamProperties)
+            return new AppSettings
             {
-                ComboBoxItem comboBoxItem = new ComboBoxItem();
-                comboBoxItem.Content = property.GetFriendlyName(showFrameRate);
-                comboBoxItem.Tag = property;
-                comboBox.Items.Add(comboBoxItem);
-            }
+                Quality = quality,
+                FrameRate = frameRate,
+                UseSourceSize = useSourceSize,
+                AudioDeviceId = (AudioDeviceComboBox.SelectedItem as ComboBoxItem).Tag.ToString(),
+                WebcamDeviceId = (WebcamDeviceComboBox.SelectedItem as ComboBoxItem).Tag.ToString(),
+                WebcamQuality = webcamQuality,
+                AdaptBitrate = adaptBitrate,
+                StorageFolder = _storageFolder.Path,
+                WebcamExposure = (long)ExposureSlider.Value,
+                WebcamWhiteBalance = (uint)WbSlider.Value,
+                WebcamExposureAuto = ExposureAutoCheckBox.IsChecked.HasValue ? ExposureAutoCheckBox.IsChecked.Value : true,
+                WebcamWhiteBalanceAuto = WbAutoCheckBox.IsChecked.HasValue ? WbAutoCheckBox.IsChecked.Value : true
+            };
+        }
 
+        public void CacheCurrentSettings()
+        {
+            var settings = GetCurrentSettings();
+            AppSettingsContainer.CacheSettings(settings);
+        }
+        #endregion
+
+        #region Webcam settings
+
+        private void SetExposureControls()
+        {
+            // exposure control
+            var exposureControl = _webcamMediaCapture.VideoDeviceController.ExposureControl;
+
+            if (exposureControl.Supported)
+            {
+                ExposureAutoCheckBox.Visibility = Visibility.Visible;
+                ExposureSlider.Visibility = Visibility.Visible;
+
+                ExposureAutoCheckBox.IsChecked = exposureControl.Auto;
+
+                ExposureSlider.Minimum = exposureControl.Min.Ticks;
+                ExposureSlider.Maximum = exposureControl.Max.Ticks;
+                ExposureSlider.StepFrequency = exposureControl.Step.Ticks;
+
+                ExposureSlider.ValueChanged -= ExposureSlider_ValueChanged;
+                var value = exposureControl.Value;
+                ExposureSlider.Value = value.Ticks;
+                ExposureSlider.ValueChanged += ExposureSlider_ValueChanged;
+            }
+            else
+            {
+                var exposure = _webcamMediaCapture.VideoDeviceController.Exposure;
+                double value;
+
+                if (exposure.TryGetValue(out value))
+                {
+                    ExposureSlider.Minimum = exposure.Capabilities.Min;
+                    ExposureSlider.Maximum = exposure.Capabilities.Max;
+                    ExposureSlider.StepFrequency = exposure.Capabilities.Step;
+
+                    ExposureSlider.ValueChanged -= ExposureSlider_ValueChanged;
+                    ExposureSlider.Value = value;
+                    ExposureSlider.ValueChanged += ExposureSlider_ValueChanged;
+                }
+                else
+                {
+                    ExposureSlider.Visibility = Visibility.Collapsed;
+                }
+
+                bool autoValue;
+                if (exposure.TryGetAuto(out autoValue))
+                {
+                    ExposureAutoCheckBox.IsChecked = autoValue;
+                }
+                else
+                {
+                    ExposureAutoCheckBox.Visibility = Visibility.Collapsed;
+                }
+            }
+        }
+
+        private void SetWhiteBalanceControl()
+        {
+            // white balance control
+            var whiteBalanceControl = _webcamMediaCapture.VideoDeviceController.WhiteBalanceControl;
+
+            if (whiteBalanceControl.Supported)
+            {
+                WbSlider.Visibility = Visibility.Visible;
+                WbComboBox.Visibility = Visibility.Visible;
+
+                if (WbComboBox.ItemsSource == null)
+                {
+                    WbComboBox.ItemsSource = Enum.GetValues(typeof(ColorTemperaturePreset)).Cast<ColorTemperaturePreset>();
+                }
+
+                WbComboBox.SelectedItem = whiteBalanceControl.Preset;
+
+                if (whiteBalanceControl.Max - whiteBalanceControl.Min > whiteBalanceControl.Step)
+                {
+                    WbSlider.Minimum = whiteBalanceControl.Min;
+                    WbSlider.Maximum = whiteBalanceControl.Max;
+                    WbSlider.StepFrequency = whiteBalanceControl.Step;
+
+                    WbSlider.ValueChanged -= WbSlider_ValueChanged;
+                    WbSlider.Value = whiteBalanceControl.Value;
+                    WbSlider.ValueChanged += WbSlider_ValueChanged;
+                }
+                else
+                {
+                    WbSlider.Visibility = Visibility.Collapsed;
+                }
+            }
+            else
+            {
+                WbComboBox.Visibility = Visibility.Collapsed;
+
+                var whitebalance = _webcamMediaCapture.VideoDeviceController.WhiteBalance;
+                double value;
+
+                if (whitebalance.TryGetValue(out value))
+                {
+                    WbSlider.Minimum = whitebalance.Capabilities.Min;
+                    WbSlider.Maximum = whitebalance.Capabilities.Max;
+                    WbSlider.StepFrequency = whitebalance.Capabilities.Step;
+
+                    WbSlider.ValueChanged -= WbSlider_ValueChanged;
+                    WbSlider.Value = value;
+                    WbSlider.ValueChanged += WbSlider_ValueChanged;
+                }
+                else
+                {
+                    WbSlider.Visibility = Visibility.Collapsed;
+                }
+
+                bool autoValue;
+                if (whitebalance.TryGetAuto(out autoValue))
+                {
+                    WbAutoCheckBox.Visibility = Visibility.Visible;
+                    WbAutoCheckBox.IsChecked = autoValue;
+
+                    WbAutoCheckBox.Checked += WbCheckBox_CheckedChanged;
+                    WbAutoCheckBox.Unchecked += WbCheckBox_CheckedChanged;
+                }
+            }
+        }
+
+        private void WbCheckBox_CheckedChanged(object sender, RoutedEventArgs e)
+        {
+            if (_webcamMediaCapture.VideoDeviceController.WhiteBalance.Capabilities.AutoModeSupported)
+            {
+                _webcamMediaCapture.VideoDeviceController.WhiteBalance.TrySetAuto(WbAutoCheckBox.IsChecked.Value);
+
+                if (!WbAutoCheckBox.IsChecked.Value)
+                {
+                    _webcamMediaCapture.VideoDeviceController.WhiteBalance.TrySetValue(WbSlider.Value);
+                }
+            }
+        }
+
+        private async void WebcamComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var selectedItem = (sender as ComboBox).SelectedItem as ComboBoxItem;
+            var encodingProperties = (selectedItem.Tag as StreamPropertiesHelper).EncodingProperties;
+            await _webcamMediaCapture.VideoDeviceController.SetMediaStreamPropertiesAsync(MediaStreamType.VideoRecord, encodingProperties);
+
+            SetExposureControls();
+            SetWhiteBalanceControl();
+
+            // load settings
             var settings = AppSettingsContainer.GetCachedSettings();
-            comboBox.SelectedItem = WebcamComboBox.Items.Where(x => (x as ComboBoxItem).Content.ToString() == settings.WebcamQuality).FirstOrDefault();
-        }
 
-        private async Task InitAudioMeterAsync()
-        {
-            var result = await AudioGraph.CreateAsync(new AudioGraphSettings(Windows.Media.Render.AudioRenderCategory.Speech));
-            if (result.Status == AudioGraphCreationStatus.Success)
+            if (ExposureAutoCheckBox.Visibility == Visibility.Visible && ExposureSlider.Visibility == Visibility.Visible)
             {
-                this.graph = result.Graph;
+                ExposureSlider.Value = settings.WebcamExposure;
+                ExposureAutoCheckBox.IsChecked = settings.WebcamExposureAuto;
+            }
 
-                var microphone = await DeviceInformation.CreateFromIdAsync(MediaDevice.GetDefaultAudioCaptureId(AudioDeviceRole.Default));
-                var inProfile = MediaEncodingProfile.CreateWav(AudioEncodingQuality.High);
-                var inputResult = await this.graph.CreateDeviceInputNodeAsync(MediaCategory.Speech, inProfile.Audio, microphone);
+            if (WbSlider.Visibility == Visibility.Visible)
+            {
+                WbSlider.Value = settings.WebcamWhiteBalance;
+            }
 
-                this.graph.Start();
-
-                var source = PlaybackSource.CreateFromAudioNode(inputResult.DeviceInputNode);
-                AudioDiscreteVUBar.Source = source.Source;
+            if (WbAutoCheckBox.Visibility == Visibility.Visible)
+            {
+                WbAutoCheckBox.IsChecked = settings.WebcamWhiteBalanceAuto;
             }
         }
 
-        private async Task InitWebcamAsync(string deviceId)
+        private async void WebcamDeviceComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (_webcamMediaCapture != null)
-            {
-                await _webcamMediaCapture.StopPreviewAsync();
-            }
+            var webcamDevice = WebcamDeviceComboBox.SelectedItem as ComboBoxItem;
+            var audioDevice = AudioDeviceComboBox.SelectedItem as ComboBoxItem;
 
-            _webcamMediaCapture = new MediaCapture();
-            _webcamMediaCapture.RecordLimitationExceeded += CaptureManager_RecordLimitationExceeded;
+            if (webcamDevice == null || audioDevice == null)
+                return;
 
-            await _webcamMediaCapture.InitializeAsync(new MediaCaptureInitializationSettings()
-            {
-                VideoDeviceId = deviceId,
-                StreamingCaptureMode = StreamingCaptureMode.AudioAndVideo
-            });
-
-            WebcamPreview.Source = _webcamMediaCapture;
-            await _webcamMediaCapture.StartPreviewAsync();
+            await InitWebcamAsync(webcamDevice.Tag.ToString(), audioDevice.Tag.ToString());
+            PopulateStreamPropertiesUI(MediaStreamType.VideoRecord, WebcamComboBox, true);
         }
 
+        private async void AudioDeviceComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var webcamDevice = WebcamDeviceComboBox.SelectedItem as ComboBoxItem;
+            var audioDevice = AudioDeviceComboBox.SelectedItem as ComboBoxItem;
+
+            if (webcamDevice == null || audioDevice == null)
+                return;
+
+            await InitWebcamAsync(webcamDevice.Tag.ToString(), audioDevice.Tag.ToString());
+            PopulateStreamPropertiesUI(MediaStreamType.VideoRecord, WebcamComboBox, true);
+
+            await InitAudioMeterAsync();
+        }
+
+        private async void ExposureSlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
+        {
+            var value = TimeSpan.FromTicks((long)(sender as Slider).Value);
+
+            if (_webcamMediaCapture.VideoDeviceController.ExposureControl.Supported)
+            {
+                await _webcamMediaCapture.VideoDeviceController.ExposureControl.SetValueAsync(value);
+            }
+            else
+            {
+                _webcamMediaCapture.VideoDeviceController.Exposure.TrySetValue((long)(sender as Slider).Value);
+            }
+        }
+
+        private async void ExposureCheckBox_CheckedChanged(object sender, RoutedEventArgs e)
+        {
+            var autoExposure = ((sender as CheckBox).IsChecked == true);
+
+            if (_webcamMediaCapture.VideoDeviceController.ExposureControl.Supported)
+            {
+                await _webcamMediaCapture.VideoDeviceController.ExposureControl.SetAutoAsync(autoExposure);
+            }
+            else
+            {
+                _webcamMediaCapture.VideoDeviceController.Exposure.TrySetAuto(autoExposure);
+
+                if (!autoExposure)
+                {
+                    _webcamMediaCapture.VideoDeviceController.Exposure.TrySetValue(ExposureSlider.Value);
+                }
+            }
+        }
+
+        private async void WbComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var selected = (ColorTemperaturePreset)WbComboBox.SelectedItem;
+            WbSlider.IsEnabled = (selected == ColorTemperaturePreset.Manual);
+            await _webcamMediaCapture.VideoDeviceController.WhiteBalanceControl.SetPresetAsync(selected);
+
+        }
+
+        private async void WbSlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
+        {
+            var value = (sender as Slider).Value;
+
+            if (_webcamMediaCapture.VideoDeviceController.WhiteBalanceControl.Supported)
+            {
+                await _webcamMediaCapture.VideoDeviceController.WhiteBalanceControl.SetValueAsync((uint)value);
+            }
+            else
+            {
+                _webcamMediaCapture.VideoDeviceController.WhiteBalance.TrySetValue(value);
+            }
+        }
+        #endregion
+
+        #region Recording
         private async void ToggleButton_Checked(object sender, RoutedEventArgs e)
         {
             var button = (ToggleButton)sender;
@@ -403,219 +715,7 @@ namespace SimpleRecorder
         {
             return (number % 2 == 0) ? number : number + 1;
         }
-
-        private AppSettings GetCurrentSettings()
-        {
-            var quality = AppSettingsContainer.ParseEnumValue<VideoEncodingQuality>((string)QualityComboBox.SelectedItem);
-            var frameRate = uint.Parse(((string)FrameRateComboBox.SelectedItem).Replace("fps", ""));
-            var useSourceSize = UseCaptureItemSizeCheckBox.IsChecked.Value;
-            var adaptBitrate = AdaptBitrateCheckBox.IsChecked.Value;
-            var webcamQuality = (WebcamComboBox.SelectedItem as ComboBoxItem).Content.ToString();
-
-            return new AppSettings
-            {
-                Quality = quality,
-                FrameRate = frameRate,
-                UseSourceSize = useSourceSize,
-                WebcamDeviceId = (WebcamDeviceComboBox.SelectedItem as ComboBoxItem).Tag.ToString(),
-                WebcamQuality = webcamQuality,
-                AdaptBitrate = adaptBitrate,
-                StorageFolder = _storageFolder.Path,
-                WebcamExposure = (long)ExposureSlider.Value,
-                WebcamWhiteBalance = (uint)WbSlider.Value,
-                WebcamExposureAuto = ExposureAutoCheckBox.IsChecked.HasValue ? ExposureAutoCheckBox.IsChecked.Value : true,
-                WebcamWhiteBalanceAuto = WbAutoCheckBox.IsChecked.HasValue ? WbAutoCheckBox.IsChecked.Value : true
-            };
-        }
-
-        public void CacheCurrentSettings()
-        {
-            var settings = GetCurrentSettings();
-            AppSettingsContainer.CacheSettings(settings);
-        }
-
-        private async Task InitWebcamDevicesAsync()
-        {
-            // Finds all video capture devices
-            DeviceInformationCollection devices = await DeviceInformation.FindAllAsync(DeviceClass.VideoCapture);
-
-            foreach (var device in devices)
-            {
-                var comboBoxItem = new ComboBoxItem();
-                comboBoxItem.Content = device.Name;
-                comboBoxItem.Tag = device.Id;
-                WebcamDeviceComboBox.Items.Add(comboBoxItem);
-            }
-        }
-
-        private void SetExposureControls()
-        {
-            // exposure control
-            var exposureControl = _webcamMediaCapture.VideoDeviceController.ExposureControl;
-
-            if (exposureControl.Supported)
-            {
-                ExposureAutoCheckBox.Visibility = Visibility.Visible;
-                ExposureSlider.Visibility = Visibility.Visible;
-
-                ExposureAutoCheckBox.IsChecked = exposureControl.Auto;
-
-                ExposureSlider.Minimum = exposureControl.Min.Ticks;
-                ExposureSlider.Maximum = exposureControl.Max.Ticks;
-                ExposureSlider.StepFrequency = exposureControl.Step.Ticks;
-
-                ExposureSlider.ValueChanged -= ExposureSlider_ValueChanged;
-                var value = exposureControl.Value;
-                ExposureSlider.Value = value.Ticks;
-                ExposureSlider.ValueChanged += ExposureSlider_ValueChanged;
-            }
-            else
-            {
-                var exposure = _webcamMediaCapture.VideoDeviceController.Exposure;
-                double value;
-
-                if (exposure.TryGetValue(out value))
-                {
-                    ExposureSlider.Minimum = exposure.Capabilities.Min;
-                    ExposureSlider.Maximum = exposure.Capabilities.Max;
-                    ExposureSlider.StepFrequency = exposure.Capabilities.Step;
-
-                    ExposureSlider.ValueChanged -= ExposureSlider_ValueChanged;
-                    ExposureSlider.Value = value;
-                    ExposureSlider.ValueChanged += ExposureSlider_ValueChanged;
-                }
-                else
-                {
-                    ExposureSlider.Visibility = Visibility.Collapsed;
-                }
-
-                bool autoValue;
-                if (exposure.TryGetAuto(out autoValue))
-                {
-                    ExposureAutoCheckBox.IsChecked = autoValue;
-                }
-                else
-                {
-                    ExposureAutoCheckBox.Visibility = Visibility.Collapsed;
-                }
-            }
-        }
-
-        private void SetWhiteBalanceControl()
-        {
-            // white balance control
-            var whiteBalanceControl = _webcamMediaCapture.VideoDeviceController.WhiteBalanceControl;
-
-            if (whiteBalanceControl.Supported)
-            {
-                WbSlider.Visibility = Visibility.Visible;
-                WbComboBox.Visibility = Visibility.Visible;
-
-                if (WbComboBox.ItemsSource == null)
-                {
-                    WbComboBox.ItemsSource = Enum.GetValues(typeof(ColorTemperaturePreset)).Cast<ColorTemperaturePreset>();
-                }
-
-                WbComboBox.SelectedItem = whiteBalanceControl.Preset;
-
-                if (whiteBalanceControl.Max - whiteBalanceControl.Min > whiteBalanceControl.Step)
-                {
-                    WbSlider.Minimum = whiteBalanceControl.Min;
-                    WbSlider.Maximum = whiteBalanceControl.Max;
-                    WbSlider.StepFrequency = whiteBalanceControl.Step;
-
-                    WbSlider.ValueChanged -= WbSlider_ValueChanged;
-                    WbSlider.Value = whiteBalanceControl.Value;
-                    WbSlider.ValueChanged += WbSlider_ValueChanged;
-                }
-                else
-                {
-                    WbSlider.Visibility = Visibility.Collapsed;
-                }
-            }
-            else
-            {
-                WbComboBox.Visibility = Visibility.Collapsed;
-
-                var whitebalance = _webcamMediaCapture.VideoDeviceController.WhiteBalance;
-                double value;
-
-                if (whitebalance.TryGetValue(out value))
-                {
-                    WbSlider.Minimum = whitebalance.Capabilities.Min;
-                    WbSlider.Maximum = whitebalance.Capabilities.Max;
-                    WbSlider.StepFrequency = whitebalance.Capabilities.Step;
-
-                    WbSlider.ValueChanged -= WbSlider_ValueChanged;
-                    WbSlider.Value = value;
-                    WbSlider.ValueChanged += WbSlider_ValueChanged;
-                }
-                else
-                {
-                    WbSlider.Visibility = Visibility.Collapsed;
-                }
-
-                bool autoValue;
-                if (whitebalance.TryGetAuto(out autoValue))
-                {
-                    WbAutoCheckBox.Visibility = Visibility.Visible;
-                    WbAutoCheckBox.IsChecked = autoValue;
-
-                    WbAutoCheckBox.Checked += WbCheckBox_CheckedChanged;
-                    WbAutoCheckBox.Unchecked += WbCheckBox_CheckedChanged;
-                }
-            }
-        }
-
-        private void WbCheckBox_CheckedChanged(object sender, RoutedEventArgs e)
-        {
-            if (_webcamMediaCapture.VideoDeviceController.WhiteBalance.Capabilities.AutoModeSupported)
-            {
-                _webcamMediaCapture.VideoDeviceController.WhiteBalance.TrySetAuto(WbAutoCheckBox.IsChecked.Value);
-
-                if (!WbAutoCheckBox.IsChecked.Value)
-                {
-                    _webcamMediaCapture.VideoDeviceController.WhiteBalance.TrySetValue(WbSlider.Value);
-                }
-            }
-        }
-
-        private async void WebcamComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            var selectedItem = (sender as ComboBox).SelectedItem as ComboBoxItem;
-            var encodingProperties = (selectedItem.Tag as StreamPropertiesHelper).EncodingProperties;
-            await _webcamMediaCapture.VideoDeviceController.SetMediaStreamPropertiesAsync(MediaStreamType.VideoRecord, encodingProperties);
-
-            SetExposureControls();
-            SetWhiteBalanceControl();
-
-            // load settings
-            var settings = AppSettingsContainer.GetCachedSettings();
-
-            if (ExposureAutoCheckBox.Visibility == Visibility.Visible && ExposureSlider.Visibility == Visibility.Visible)
-            {
-                ExposureSlider.Value = settings.WebcamExposure;
-                ExposureAutoCheckBox.IsChecked = settings.WebcamExposureAuto;
-            }
-
-            if (WbSlider.Visibility == Visibility.Visible)
-            {
-                WbSlider.Value = settings.WebcamWhiteBalance;
-            }
-
-            if (WbAutoCheckBox.Visibility == Visibility.Visible)
-            {
-                WbAutoCheckBox.IsChecked = settings.WebcamWhiteBalanceAuto;
-            }
-        }
-
-        private async void WebcamDeviceComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            var selectedItem = WebcamDeviceComboBox.SelectedItem as ComboBoxItem;
-
-            await InitWebcamAsync(selectedItem.Tag.ToString());
-            PopulateStreamPropertiesUI(MediaStreamType.VideoRecord, WebcamComboBox, true);
-        }
+        #endregion
 
         private void MainPage_AppServiceConnected(object sender, EventArgs e)
         {
@@ -674,59 +774,5 @@ namespace SimpleRecorder
             FolderName.Text = _storageFolder.Path;
         }
 
-        private async void ExposureSlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
-        {
-            var value = TimeSpan.FromTicks((long)(sender as Slider).Value);
-
-            if (_webcamMediaCapture.VideoDeviceController.ExposureControl.Supported)
-            {
-                await _webcamMediaCapture.VideoDeviceController.ExposureControl.SetValueAsync(value);
-            }
-            else
-            {
-                _webcamMediaCapture.VideoDeviceController.Exposure.TrySetValue((long)(sender as Slider).Value);
-            }
-        }
-
-        private async void ExposureCheckBox_CheckedChanged(object sender, RoutedEventArgs e)
-        {
-            var autoExposure = ((sender as CheckBox).IsChecked == true);
-
-            if (_webcamMediaCapture.VideoDeviceController.ExposureControl.Supported)
-            {
-                await _webcamMediaCapture.VideoDeviceController.ExposureControl.SetAutoAsync(autoExposure);
-            }
-            else
-            {
-                _webcamMediaCapture.VideoDeviceController.Exposure.TrySetAuto(autoExposure);
-
-                if (!autoExposure)
-                {
-                    _webcamMediaCapture.VideoDeviceController.Exposure.TrySetValue(ExposureSlider.Value);
-                }
-            }
-        }
-
-        private async void WbComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            var selected = (ColorTemperaturePreset)WbComboBox.SelectedItem;
-            WbSlider.IsEnabled = (selected == ColorTemperaturePreset.Manual);
-            await _webcamMediaCapture.VideoDeviceController.WhiteBalanceControl.SetPresetAsync(selected);
-
-        }
-
-        private async void WbSlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
-        {
-            var value = (sender as Slider).Value;
-
-            if (_webcamMediaCapture.VideoDeviceController.WhiteBalanceControl.Supported)
-            {
-                await _webcamMediaCapture.VideoDeviceController.WhiteBalanceControl.SetValueAsync((uint)value);
-            }
-            else
-            {
-                _webcamMediaCapture.VideoDeviceController.WhiteBalance.TrySetValue(value);
-            }
-        }
     }
 }

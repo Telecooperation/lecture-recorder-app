@@ -50,6 +50,10 @@ namespace SimpleRecorder
             {
                 result.WebcamDeviceId = webcamDeviceId as string;
             }
+            if (localSettings.Values.TryGetValue(nameof(AppSettings.WebcamDeviceId), out var audioDeviceId))
+            {
+                result.AudioDeviceId = audioDeviceId as string;
+            }
             if (localSettings.Values.TryGetValue(nameof(AppSettings.WebcamExposure), out var webcamExposure))
             {
                 result.WebcamExposure = (long)webcamExposure;
@@ -65,6 +69,10 @@ namespace SimpleRecorder
             if (localSettings.Values.TryGetValue(nameof(AppSettings.WebcamWhiteBalanceAuto), out var webcamWhiteBalanceAuto))
             {
                 result.WebcamWhiteBalanceAuto = (bool)webcamWhiteBalanceAuto;
+            }
+            if (localSettings.Values.TryGetValue(nameof(AppSettings.BackendApiUrl), out var backendApiUrl))
+            {
+                result.BackendApiUrl = (string)backendApiUrl;
             }
 
             return result;
@@ -89,6 +97,9 @@ namespace SimpleRecorder
             localSettings.Values[nameof(AppSettings.WebcamExposureAuto)] = settings.WebcamExposureAuto;
             localSettings.Values[nameof(AppSettings.WebcamWhiteBalance)] = settings.WebcamWhiteBalance;
             localSettings.Values[nameof(AppSettings.WebcamWhiteBalanceAuto)] = settings.WebcamWhiteBalanceAuto;
+            localSettings.Values[nameof(AppSettings.AudioDeviceId)] = settings.AudioDeviceId;
+
+            localSettings.Values[nameof(AppSettings.BackendApiUrl)] = settings.BackendApiUrl;
         }
     }
 }
