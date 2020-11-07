@@ -34,7 +34,7 @@ xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
       Executable="$targetnametoken$.exe"
       EntryPoint="$targetentrypoint$">
       <uap:VisualElements
-        DisplayName="Recorder"
+        DisplayName="TK Screen Recorder"
         Description="Recorder"
         BackgroundColor="transparent"
         Square150x150Logo="Images\Square150x150Logo.png"

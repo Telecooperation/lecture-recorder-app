@@ -20,7 +20,7 @@
         </Grid.RowDefinitions>
 
         <muxc:TabView Grid.Column="0" Grid.Row="1" AllowDropTabs="False" CanReorderTabs="False" IsAddTabButtonVisible="False">
-            <muxc:TabViewItem Header="Storage" IsClosable="False">
+            <muxc:TabViewItem Header="Storage" IsSelected="True" IsClosable="False">
                 <StackPanel Margin="10">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock VerticalAlignment="Center" MinWidth="50" Margin="10">Folder:</TextBlock>
@@ -52,7 +52,7 @@
                     <CheckBox Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="2" x:Name="AdaptBitrateCheckBox" HorizontalAlignment="Stretch" Margin="10" Content="Bitrate Adaptation" IsChecked="False"/>
                 </Grid>
             </muxc:TabViewItem>
-            <muxc:TabViewItem Header="Video and Audio" IsSelected="True" IsClosable="False">
+            <muxc:TabViewItem Header="Video and Audio" IsClosable="False">
                 <Grid Margin="10">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="150"/>
@@ -83,7 +83,8 @@
                     <StackPanel Grid.Row="2" Grid.Column="3" Orientation="Horizontal">
                         <Slider Margin="10" MinWidth="150" Name="WbSlider" ValueChanged="WbSlider_ValueChanged"/>
                         <TextBlock VerticalAlignment="Center" MinWidth="30" TextAlignment="Center" Name="WbTextBox" Text="{Binding ElementName=WbSlider,Path=Value}" Visibility="{Binding ElementName=WbSlider,Path=Visibility}"/>
-                        <CheckBox Margin="10" Name="WbAutoCheckBox" Content="Auto" Checked="WbCheckBox_CheckedChanged" Unchecked="WbCheckBox_CheckedChanged"/>
+                        <ComboBox VerticalAlignment="Center" Name="WbComboBox" SelectionChanged="WbComboBox_SelectionChanged"/>
+                        <CheckBox Margin="10" Visibility="Collapsed" Name="WbAutoCheckBox" Content="Auto" Checked="WbCheckBox_CheckedChanged" Unchecked="WbCheckBox_CheckedChanged"/>
                     </StackPanel>
 
                     <TextBlock Grid.Row="0" Grid.Column="2" VerticalAlignment="Center" MinWidth="150" Margin="10">Audio Device:</TextBlock>
@@ -107,7 +108,7 @@
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                 <StackPanel Orientation="Vertical">
                     <visualizer:DiscreteVUBar x:Name="AudioDiscreteVUBar" UnlitElement="LightGray" DisplayPeak="True" Height="130" Width="30" />
-                    
+
                     <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" Margin="10">PowerPoint Status:</TextBlock>
                     <TextBlock HorizontalAlignment="Center" x:Name="PowerPointGreen" FontFamily="Segoe MDL2 Assets" Visibility="Collapsed" FontSize="32" Foreground="Green">&#xE73E;</TextBlock>
                     <TextBlock HorizontalAlignment="Center" x:Name="PowerPointRed" FontFamily="Segoe MDL2 Assets" Visibility="Visible" FontSize="32" Foreground="Red">&#xE711;</TextBlock>
