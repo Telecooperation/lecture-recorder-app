@@ -1,0 +1,25 @@
+﻿<ContentDialog
+    x:Class="SimpleRecorder.UploadRecordingPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:SimpleRecorder"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="Upload Recording"
+    PrimaryButtonText="Upload"
+    SecondaryButtonText="Cancel"
+    PrimaryButtonClick="ContentDialog_PrimaryButtonClick"
+    SecondaryButtonClick="ContentDialog_SecondaryButtonClick" Loaded="ContentDialog_Loaded">
+
+    <Grid>
+        <StackPanel>
+            <TextBlock TextWrapping="Wrap">You now upload the recording to the lecture server for further processing and rendering of the recording.</TextBlock>
+
+            <ComboBox Header="Lecture" x:Name="cboLecture" ItemsSource="{x:Bind lecturesList}" Margin="0,10,0,0" HorizontalAlignment="Stretch" DisplayMemberPath="Title" />
+            <TextBox Header="Title" x:Name="txtTitle" Margin="0,10,0,0" HorizontalAlignment="Stretch" />
+
+            <DatePicker Header="Lecture date" Margin="0,24,0,0" x:Name="dpRecording" />
+        </StackPanel>
+    </Grid>
+</ContentDialog>

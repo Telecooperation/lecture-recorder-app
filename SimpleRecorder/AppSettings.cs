@@ -17,6 +17,10 @@ namespace SimpleRecorder
 
         public bool AdaptBitrate;
 
+        public string StorageFolder;
+
+        public string AudioDeviceId;
+
         public string WebcamDeviceId;
 
         public string WebcamQuality;
@@ -28,5 +32,7 @@ namespace SimpleRecorder
         public double WebcamWhiteBalance;
 
         public bool WebcamWhiteBalanceAuto;
+
+        public string BackendApiUrl;
     }
 }
