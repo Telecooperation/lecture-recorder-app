@@ -117,7 +117,7 @@
         </Grid>
 
         <Grid Grid.Column="0" Grid.Row="0">
-            <CaptureElement Stretch="UniformToFill" x:Name="WebcamPreview"/>
+            <CaptureElement x:Name="WebcamPreview"/>
         </Grid>
     </Grid>
 </Page>
