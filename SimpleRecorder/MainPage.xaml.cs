@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Windows.AI.MachineLearning.Preview;
 using Windows.ApplicationModel;
 using Windows.ApplicationModel.AppService;
 using Windows.ApplicationModel.ExtendedExecution.Foreground;
@@ -407,8 +408,17 @@ namespace SimpleRecorder
             if (webcamDevice == null || audioDevice == null)
                 return;
 
-            await InitWebcamAsync(webcamDevice.Tag.ToString(), audioDevice.Tag.ToString());
-            PopulateStreamPropertiesUI(MediaStreamType.VideoRecord, WebcamComboBox, true);
+            try
+            {
+                await InitWebcamAsync(webcamDevice.Tag.ToString(), audioDevice.Tag.ToString());
+                PopulateStreamPropertiesUI(MediaStreamType.VideoRecord, WebcamComboBox, true);
+
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                var msg = new MessageDialog("Unauthorized access to video and audio recording. Please change setting in Windows settings.");
+                await msg.ShowAsync();
+            }
         }
 
         private async void AudioDeviceComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -419,10 +429,18 @@ namespace SimpleRecorder
             if (webcamDevice == null || audioDevice == null)
                 return;
 
-            await InitWebcamAsync(webcamDevice.Tag.ToString(), audioDevice.Tag.ToString());
-            PopulateStreamPropertiesUI(MediaStreamType.VideoRecord, WebcamComboBox, true);
+            try
+            {
+                await InitWebcamAsync(webcamDevice.Tag.ToString(), audioDevice.Tag.ToString());
+                PopulateStreamPropertiesUI(MediaStreamType.VideoRecord, WebcamComboBox, true);
 
-            await InitAudioMeterAsync();
+                await InitAudioMeterAsync();
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                var msg = new MessageDialog("Unauthorized access to video and audio recording. Please change setting in Windows settings.");
+                await msg.ShowAsync();
+            }
         }
 
         private async void ExposureSlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
@@ -771,7 +789,11 @@ namespace SimpleRecorder
             folderPicker.FileTypeFilter.Add("*");
 
             _storageFolder = await folderPicker.PickSingleFolderAsync();
-            FolderName.Text = _storageFolder.Path;
+
+            if (_storageFolder != null)
+            {
+                FolderName.Text = _storageFolder.Path;
+            }
         }
 
     }
