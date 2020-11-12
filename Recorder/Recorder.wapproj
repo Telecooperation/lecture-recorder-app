@@ -52,7 +52,7 @@
   <PropertyGroup>
     <ProjectGuid>55ff24db-1c4e-4bff-8300-8120ea48bb02</ProjectGuid>
     <TargetPlatformVersion>10.0.18362.0</TargetPlatformVersion>
-    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <TargetPlatformMinVersion>10.0.18362.0</TargetPlatformMinVersion>
     <DefaultLanguage>de-DE</DefaultLanguage>
     <AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
     <EntryPointProjectUniqueName>..\SimpleRecorder\SimpleRecorder.csproj</EntryPointProjectUniqueName>
