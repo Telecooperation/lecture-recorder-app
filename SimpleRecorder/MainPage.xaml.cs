@@ -31,16 +31,16 @@ namespace SimpleRecorder
 {
     public sealed partial class MainPage : Page
     {
-        private IDirect3DDevice _screenDevice;
-        private Encoder _screenEncoder;
+        private IDirect3DDevice screenDevice;
+        private Encoder screenCapture;
+        private GraphicsCaptureItem captureItem = null;
 
-        private MediaCapture _webcamMediaCapture;
-        private LowLagMediaRecording _webcamMediaRecording;
+        private MediaCapture mediaCapture;
+        private LowLagMediaRecording mediaRecording;
 
-        private AudioGraph graph;
+        private AudioGraph audioGraph;
 
-        private StorageFolder _storageFolder = null;
-        private GraphicsCaptureItem _item = null;
+        private StorageFolder storageFolder = null;
 
         private DispatcherTimer _timer = new DispatcherTimer();
         private long _timerCount = 0;
@@ -62,7 +62,7 @@ namespace SimpleRecorder
             }
 
             // initialize screen recording
-            _screenDevice = Direct3D11Helpers.CreateDevice();
+            screenDevice = Direct3D11Helpers.CreateDevice();
 
             // connect to the powerpoint app service
             App.AppServiceConnected += MainPage_AppServiceConnected;
@@ -80,19 +80,22 @@ namespace SimpleRecorder
         }
 
         #region Device initialization
-        private void PopulateStreamPropertiesUI(MediaStreamType streamType, ComboBox comboBox, bool showFrameRate = true)
+        private void PopulateVideoDeviceProperties(MediaStreamType streamType, ComboBox comboBox, bool showFrameRate = true)
         {
             // query all properties of the specified video stream type 
             IEnumerable<StreamPropertiesHelper> allStreamProperties =
-                _webcamMediaCapture.VideoDeviceController.GetAvailableMediaStreamProperties(streamType).Select(x => new StreamPropertiesHelper(x));
+                mediaCapture.VideoDeviceController.GetAvailableMediaStreamProperties(streamType)
+                .Select(x => new StreamPropertiesHelper(x));
 
             // order them by resolution then frame rate
-            allStreamProperties = allStreamProperties.OrderByDescending(x => x.Height * x.Width).ThenByDescending(x => x.FrameRate);
+            allStreamProperties = allStreamProperties
+                .OrderByDescending(x => x.Height * x.Width)
+                .ThenByDescending(x => x.FrameRate);
 
             // populate the combo box with the entries
             foreach (var property in allStreamProperties)
             {
-                ComboBoxItem comboBoxItem = new ComboBoxItem();
+                var comboBoxItem = new ComboBoxItem();
                 comboBoxItem.Content = property.GetFriendlyName(showFrameRate);
                 comboBoxItem.Tag = property;
                 comboBox.Items.Add(comboBoxItem);
@@ -107,7 +110,7 @@ namespace SimpleRecorder
             var result = await AudioGraph.CreateAsync(new AudioGraphSettings(Windows.Media.Render.AudioRenderCategory.Speech));
             if (result.Status == AudioGraphCreationStatus.Success)
             {
-                this.graph = result.Graph;
+                this.audioGraph = result.Graph;
 
                 var audioDevice = (AudioDeviceComboBox.SelectedItem as ComboBoxItem);
                 if (audioDevice == null)
@@ -115,16 +118,16 @@ namespace SimpleRecorder
 
                 var microphone = await DeviceInformation.CreateFromIdAsync(audioDevice.Tag.ToString());
                 var inProfile = MediaEncodingProfile.CreateWav(AudioEncodingQuality.High);
-                var inputResult = await this.graph.CreateDeviceInputNodeAsync(MediaCategory.Speech, inProfile.Audio, microphone);
+                var inputResult = await this.audioGraph.CreateDeviceInputNodeAsync(MediaCategory.Speech, inProfile.Audio, microphone);
 
-                this.graph.Start();
+                this.audioGraph.Start();
 
                 var source = PlaybackSource.CreateFromAudioNode(inputResult.DeviceInputNode);
                 AudioDiscreteVUBar.Source = source.Source;
             }
         }
 
-        private async Task InitWebcamDevicesAsync()
+        private async Task PopulateAudioAndVideoDevicesAsync()
         {
             // Finds all video capture devices
             var videoDevices = await DeviceInformation.FindAllAsync(DeviceClass.VideoCapture);
@@ -149,25 +152,25 @@ namespace SimpleRecorder
             }
         }
 
-        private async Task InitWebcamAsync(string deviceId, string audioDeviceId)
+        private async Task InitWebcamAsync(string videoDeviceId, string audioDeviceId)
         {
-            if (_webcamMediaCapture != null)
+            if (mediaCapture != null)
             {
-                await _webcamMediaCapture.StopPreviewAsync();
+                await mediaCapture.StopPreviewAsync();
             }
 
-            _webcamMediaCapture = new MediaCapture();
-            _webcamMediaCapture.RecordLimitationExceeded += CaptureManager_RecordLimitationExceeded;
+            // create new media capture
+            mediaCapture = new MediaCapture();
+            mediaCapture.RecordLimitationExceeded += CaptureManager_RecordLimitationExceeded;
 
-            await _webcamMediaCapture.InitializeAsync(new MediaCaptureInitializationSettings()
+            await mediaCapture.InitializeAsync(new MediaCaptureInitializationSettings()
             {
-                VideoDeviceId = deviceId,
-                AudioDeviceId = audioDeviceId,
-                StreamingCaptureMode = StreamingCaptureMode.AudioAndVideo
+                VideoDeviceId = videoDeviceId,
+                AudioDeviceId = audioDeviceId
             });
 
-            WebcamPreview.Source = _webcamMediaCapture;
-            await _webcamMediaCapture.StartPreviewAsync();
+            WebcamPreview.Source = mediaCapture;
+            await mediaCapture.StartPreviewAsync();
         }
         #endregion
 
@@ -197,7 +200,7 @@ namespace SimpleRecorder
             if (!string.IsNullOrEmpty(settings.StorageFolder))
             {
                 FolderName.Text = settings.StorageFolder;
-                _storageFolder = await StorageFolder.GetFolderFromPathAsync(settings.StorageFolder);
+                storageFolder = await StorageFolder.GetFolderFromPathAsync(settings.StorageFolder);
             }
 
             // set first webcam device
@@ -222,7 +225,7 @@ namespace SimpleRecorder
                 WebcamDeviceId = (WebcamDeviceComboBox.SelectedItem as ComboBoxItem).Tag.ToString(),
                 WebcamQuality = webcamQuality,
                 AdaptBitrate = adaptBitrate,
-                StorageFolder = _storageFolder.Path,
+                StorageFolder = storageFolder.Path,
                 WebcamExposure = (long)ExposureSlider.Value,
                 WebcamWhiteBalance = (uint)WbSlider.Value,
                 WebcamExposureAuto = ExposureAutoCheckBox.IsChecked.HasValue ? ExposureAutoCheckBox.IsChecked.Value : true,
@@ -242,7 +245,7 @@ namespace SimpleRecorder
         private void SetExposureControls()
         {
             // exposure control
-            var exposureControl = _webcamMediaCapture.VideoDeviceController.ExposureControl;
+            var exposureControl = mediaCapture.VideoDeviceController.ExposureControl;
 
             if (exposureControl.Supported)
             {
@@ -262,7 +265,7 @@ namespace SimpleRecorder
             }
             else
             {
-                var exposure = _webcamMediaCapture.VideoDeviceController.Exposure;
+                var exposure = mediaCapture.VideoDeviceController.Exposure;
                 double value;
 
                 if (exposure.TryGetValue(out value))
@@ -295,7 +298,7 @@ namespace SimpleRecorder
         private void SetWhiteBalanceControl()
         {
             // white balance control
-            var whiteBalanceControl = _webcamMediaCapture.VideoDeviceController.WhiteBalanceControl;
+            var whiteBalanceControl = mediaCapture.VideoDeviceController.WhiteBalanceControl;
 
             if (whiteBalanceControl.Supported)
             {
@@ -328,7 +331,7 @@ namespace SimpleRecorder
             {
                 WbComboBox.Visibility = Visibility.Collapsed;
 
-                var whitebalance = _webcamMediaCapture.VideoDeviceController.WhiteBalance;
+                var whitebalance = mediaCapture.VideoDeviceController.WhiteBalance;
                 double value;
 
                 if (whitebalance.TryGetValue(out value))
@@ -360,13 +363,13 @@ namespace SimpleRecorder
 
         private void WbCheckBox_CheckedChanged(object sender, RoutedEventArgs e)
         {
-            if (_webcamMediaCapture.VideoDeviceController.WhiteBalance.Capabilities.AutoModeSupported)
+            if (mediaCapture.VideoDeviceController.WhiteBalance.Capabilities.AutoModeSupported)
             {
-                _webcamMediaCapture.VideoDeviceController.WhiteBalance.TrySetAuto(WbAutoCheckBox.IsChecked.Value);
+                mediaCapture.VideoDeviceController.WhiteBalance.TrySetAuto(WbAutoCheckBox.IsChecked.Value);
 
                 if (!WbAutoCheckBox.IsChecked.Value)
                 {
-                    _webcamMediaCapture.VideoDeviceController.WhiteBalance.TrySetValue(WbSlider.Value);
+                    mediaCapture.VideoDeviceController.WhiteBalance.TrySetValue(WbSlider.Value);
                 }
             }
         }
@@ -375,7 +378,7 @@ namespace SimpleRecorder
         {
             var selectedItem = (sender as ComboBox).SelectedItem as ComboBoxItem;
             var encodingProperties = (selectedItem.Tag as StreamPropertiesHelper).EncodingProperties;
-            await _webcamMediaCapture.VideoDeviceController.SetMediaStreamPropertiesAsync(MediaStreamType.VideoRecord, encodingProperties);
+            await mediaCapture.VideoDeviceController.SetMediaStreamPropertiesAsync(MediaStreamType.VideoRecord, encodingProperties);
 
             SetExposureControls();
             SetWhiteBalanceControl();
@@ -411,7 +414,7 @@ namespace SimpleRecorder
             try
             {
                 await InitWebcamAsync(webcamDevice.Tag.ToString(), audioDevice.Tag.ToString());
-                PopulateStreamPropertiesUI(MediaStreamType.VideoRecord, WebcamComboBox, true);
+                PopulateVideoDeviceProperties(MediaStreamType.VideoRecord, WebcamComboBox, true);
 
             }
             catch (UnauthorizedAccessException ex)
@@ -432,7 +435,7 @@ namespace SimpleRecorder
             try
             {
                 await InitWebcamAsync(webcamDevice.Tag.ToString(), audioDevice.Tag.ToString());
-                PopulateStreamPropertiesUI(MediaStreamType.VideoRecord, WebcamComboBox, true);
+                PopulateVideoDeviceProperties(MediaStreamType.VideoRecord, WebcamComboBox, true);
 
                 await InitAudioMeterAsync();
             }
@@ -447,13 +450,13 @@ namespace SimpleRecorder
         {
             var value = TimeSpan.FromTicks((long)(sender as Slider).Value);
 
-            if (_webcamMediaCapture.VideoDeviceController.ExposureControl.Supported)
+            if (mediaCapture.VideoDeviceController.ExposureControl.Supported)
             {
-                await _webcamMediaCapture.VideoDeviceController.ExposureControl.SetValueAsync(value);
+                await mediaCapture.VideoDeviceController.ExposureControl.SetValueAsync(value);
             }
             else
             {
-                _webcamMediaCapture.VideoDeviceController.Exposure.TrySetValue((long)(sender as Slider).Value);
+                mediaCapture.VideoDeviceController.Exposure.TrySetValue((long)(sender as Slider).Value);
             }
         }
 
@@ -461,17 +464,17 @@ namespace SimpleRecorder
         {
             var autoExposure = ((sender as CheckBox).IsChecked == true);
 
-            if (_webcamMediaCapture.VideoDeviceController.ExposureControl.Supported)
+            if (mediaCapture.VideoDeviceController.ExposureControl.Supported)
             {
-                await _webcamMediaCapture.VideoDeviceController.ExposureControl.SetAutoAsync(autoExposure);
+                await mediaCapture.VideoDeviceController.ExposureControl.SetAutoAsync(autoExposure);
             }
             else
             {
-                _webcamMediaCapture.VideoDeviceController.Exposure.TrySetAuto(autoExposure);
+                mediaCapture.VideoDeviceController.Exposure.TrySetAuto(autoExposure);
 
                 if (!autoExposure)
                 {
-                    _webcamMediaCapture.VideoDeviceController.Exposure.TrySetValue(ExposureSlider.Value);
+                    mediaCapture.VideoDeviceController.Exposure.TrySetValue(ExposureSlider.Value);
                 }
             }
         }
@@ -480,7 +483,7 @@ namespace SimpleRecorder
         {
             var selected = (ColorTemperaturePreset)WbComboBox.SelectedItem;
             WbSlider.IsEnabled = (selected == ColorTemperaturePreset.Manual);
-            await _webcamMediaCapture.VideoDeviceController.WhiteBalanceControl.SetPresetAsync(selected);
+            await mediaCapture.VideoDeviceController.WhiteBalanceControl.SetPresetAsync(selected);
 
         }
 
@@ -488,13 +491,13 @@ namespace SimpleRecorder
         {
             var value = (sender as Slider).Value;
 
-            if (_webcamMediaCapture.VideoDeviceController.WhiteBalanceControl.Supported)
+            if (mediaCapture.VideoDeviceController.WhiteBalanceControl.Supported)
             {
-                await _webcamMediaCapture.VideoDeviceController.WhiteBalanceControl.SetValueAsync((uint)value);
+                await mediaCapture.VideoDeviceController.WhiteBalanceControl.SetValueAsync((uint)value);
             }
             else
             {
-                _webcamMediaCapture.VideoDeviceController.WhiteBalance.TrySetValue(value);
+                mediaCapture.VideoDeviceController.WhiteBalance.TrySetValue(value);
             }
         }
         #endregion
@@ -505,7 +508,7 @@ namespace SimpleRecorder
             var button = (ToggleButton)sender;
 
             // get storage folder
-            if (_storageFolder == null)
+            if (storageFolder == null)
             {
                 var msg = new MessageDialog("Please choose a folder first...");
                 await msg.ShowAsync();
@@ -521,9 +524,9 @@ namespace SimpleRecorder
             // get storage files
             var time = DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss_");
 
-            var screenFile = await _storageFolder.CreateFileAsync(time + "slides.mp4");
-            var webcamFile = await _storageFolder.CreateFileAsync(time + "talkinghead.mp4");
-            var jsonFile = await _storageFolder.CreateFileAsync(time + "meta.json");
+            var screenFile = await storageFolder.CreateFileAsync(time + "slides.mp4");
+            var webcamFile = await storageFolder.CreateFileAsync(time + "talkinghead.mp4");
+            var jsonFile = await storageFolder.CreateFileAsync(time + "meta.json");
 
             // get encoder properties
             var frameRate = uint.Parse(((string)FrameRateComboBox.SelectedItem).Replace("fps", ""));
@@ -537,8 +540,8 @@ namespace SimpleRecorder
 
             // get capture item
             var picker = new GraphicsCapturePicker();
-            _item = await picker.PickSingleItemAsync();
-            if (_item == null)
+            captureItem = await picker.PickSingleItemAsync();
+            if (captureItem == null)
             {
                 button.IsChecked = false;
                 return;
@@ -547,8 +550,8 @@ namespace SimpleRecorder
             // use the capture item's size for the encoding if desired
             if (useSourceSize)
             {
-                width = (uint)_item.Size.Width;
-                height = (uint)_item.Size.Height;
+                width = (uint)captureItem.Size.Width;
+                height = (uint)captureItem.Size.Height;
             }
 
             // we have a screen resolution of more than 4K?
@@ -617,20 +620,20 @@ namespace SimpleRecorder
                     webcamEncodingProfile = MediaEncodingProfile.CreateMp4(VideoEncodingQuality.Auto);
                 }
 
-                _webcamMediaRecording = await _webcamMediaCapture.PrepareLowLagRecordToStorageFileAsync(webcamEncodingProfile, webcamFile);
+                mediaRecording = await mediaCapture.PrepareLowLagRecordToStorageFileAsync(webcamEncodingProfile, webcamFile);
 
                 // kick off the screen encoding parallel
                 using (var stream = await screenFile.OpenAsync(FileAccessMode.ReadWrite))
-                using (_screenEncoder = new Encoder(_screenDevice, _item))
+                using (screenCapture = new Encoder(screenDevice, captureItem))
                 {
                     // webcam recording
-                    if (_webcamMediaCapture != null)
+                    if (mediaCapture != null)
                     {
-                        await _webcamMediaRecording.StartAsync();
+                        await mediaRecording.StartAsync();
                     }
 
                     // screen recording
-                    await _screenEncoder.EncodeAsync(
+                    await screenCapture.EncodeAsync(
                         stream,
                         width, height, bitrate,
                         frameRate);
@@ -639,8 +642,8 @@ namespace SimpleRecorder
                 MainTextBlock.Foreground = originalBrush;
 
                 // user has finished recording, so stop webcam recording
-                await _webcamMediaRecording.StopAsync();
-                await _webcamMediaRecording.FinishAsync();
+                await mediaRecording.StopAsync();
+                await mediaRecording.FinishAsync();
                 _timer.Stop();
             }
             catch (Exception ex)
@@ -658,11 +661,11 @@ namespace SimpleRecorder
                 MainTextBlock.Foreground = originalBrush;
                 MainProgressBar.IsIndeterminate = false;
 
-                _item = null;
-                if (_webcamMediaRecording != null)
+                captureItem = null;
+                if (mediaRecording != null)
                 {
-                    await _webcamMediaRecording.StopAsync();
-                    await _webcamMediaRecording.FinishAsync();
+                    await mediaRecording.StopAsync();
+                    await mediaRecording.FinishAsync();
                 }
 
                 return;
@@ -674,7 +677,7 @@ namespace SimpleRecorder
             // save slide markers
             var recording = new Recording()
             {
-                Slides = _screenEncoder.GetTimestamps()
+                Slides = screenCapture.GetTimestamps()
             };
 
             var settings = new JsonSerializerSettings
@@ -718,7 +721,7 @@ namespace SimpleRecorder
         private void CaptureManager_RecordLimitationExceeded(MediaCapture sender)
         {
             // stop the recording
-            _screenEncoder?.Dispose();
+            screenCapture?.Dispose();
 
             MainTextBlock.Text = "Limit reached (3h)";
         }
@@ -726,7 +729,7 @@ namespace SimpleRecorder
         private void ToggleButton_Unchecked(object sender, RoutedEventArgs e)
         {
             // If the encoder is doing stuff, tell it to stop
-            _screenEncoder?.Dispose();
+            screenCapture?.Dispose();
         }
 
         private uint EnsureEven(uint number)
@@ -747,7 +750,7 @@ namespace SimpleRecorder
 
             if (result == "SlideChanged")
             {
-                _screenEncoder?.AddCurrentTimestamp();
+                screenCapture?.AddCurrentTimestamp();
             }
             else if (result == "Status")
             {
@@ -774,7 +777,7 @@ namespace SimpleRecorder
         {
             // load external app and init webcam
             await FullTrustProcessLauncher.LaunchFullTrustProcessForCurrentAppAsync();
-            await InitWebcamDevicesAsync();
+            await PopulateAudioAndVideoDevicesAsync();
 
             await LoadSettings();
 
@@ -788,13 +791,12 @@ namespace SimpleRecorder
             folderPicker.SuggestedStartLocation = PickerLocationId.VideosLibrary;
             folderPicker.FileTypeFilter.Add("*");
 
-            _storageFolder = await folderPicker.PickSingleFolderAsync();
+            storageFolder = await folderPicker.PickSingleFolderAsync();
 
-            if (_storageFolder != null)
+            if (storageFolder != null)
             {
-                FolderName.Text = _storageFolder.Path;
+                FolderName.Text = storageFolder.Path;
             }
         }
-
     }
 }

@@ -11,7 +11,7 @@ xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
 
   <Identity
     Name="ac51017d-77a1-4dff-a04b-a91df9106efe"
-    Publisher="CN=Telecooperation Lab"
+    Publisher="CN=Alexander Seeliger"
     Version="2.0.13.0" />
 
   <Properties>
