@@ -210,27 +210,34 @@ namespace SimpleRecorder
 
         private AppSettings GetCurrentSettings()
         {
-            var quality = AppSettingsContainer.ParseEnumValue<VideoEncodingQuality>((string)QualityComboBox.SelectedItem);
-            var frameRate = uint.Parse(((string)FrameRateComboBox.SelectedItem).Replace("fps", ""));
-            var useSourceSize = UseCaptureItemSizeCheckBox.IsChecked.Value;
-            var adaptBitrate = AdaptBitrateCheckBox.IsChecked.Value;
-            var webcamQuality = (WebcamComboBox.SelectedItem as ComboBoxItem).Content.ToString();
-
-            return new AppSettings
+            try
             {
-                Quality = quality,
-                FrameRate = frameRate,
-                UseSourceSize = useSourceSize,
-                AudioDeviceId = (AudioDeviceComboBox.SelectedItem as ComboBoxItem).Tag.ToString(),
-                WebcamDeviceId = (WebcamDeviceComboBox.SelectedItem as ComboBoxItem).Tag.ToString(),
-                WebcamQuality = webcamQuality,
-                AdaptBitrate = adaptBitrate,
-                StorageFolder = storageFolder.Path,
-                WebcamExposure = (long)ExposureSlider.Value,
-                WebcamWhiteBalance = (uint)WbSlider.Value,
-                WebcamExposureAuto = ExposureAutoCheckBox.IsChecked.HasValue ? ExposureAutoCheckBox.IsChecked.Value : true,
-                WebcamWhiteBalanceAuto = WbAutoCheckBox.IsChecked.HasValue ? WbAutoCheckBox.IsChecked.Value : true
-            };
+                var quality = AppSettingsContainer.ParseEnumValue<VideoEncodingQuality>((string)QualityComboBox.SelectedItem);
+                var frameRate = uint.Parse(((string)FrameRateComboBox.SelectedItem).Replace("fps", ""));
+                var useSourceSize = UseCaptureItemSizeCheckBox.IsChecked.Value;
+                var adaptBitrate = AdaptBitrateCheckBox.IsChecked.Value;
+                var webcamQuality = (WebcamComboBox.SelectedItem as ComboBoxItem).Content.ToString();
+
+                return new AppSettings
+                {
+                    Quality = quality,
+                    FrameRate = frameRate,
+                    UseSourceSize = useSourceSize,
+                    AudioDeviceId = (AudioDeviceComboBox.SelectedItem as ComboBoxItem).Tag.ToString(),
+                    WebcamDeviceId = (WebcamDeviceComboBox.SelectedItem as ComboBoxItem).Tag.ToString(),
+                    WebcamQuality = webcamQuality,
+                    AdaptBitrate = adaptBitrate,
+                    StorageFolder = storageFolder.Path,
+                    WebcamExposure = (long)ExposureSlider.Value,
+                    WebcamWhiteBalance = (uint)WbSlider.Value,
+                    WebcamExposureAuto = ExposureAutoCheckBox.IsChecked.HasValue ? ExposureAutoCheckBox.IsChecked.Value : true,
+                    WebcamWhiteBalanceAuto = WbAutoCheckBox.IsChecked.HasValue ? WbAutoCheckBox.IsChecked.Value : true
+                };
+            }
+            catch
+            {
+                return new AppSettings();
+            }
         }
 
         public void CacheCurrentSettings()
