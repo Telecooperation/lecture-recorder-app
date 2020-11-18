@@ -433,7 +433,6 @@ namespace SimpleRecorder
             {
                 await InitWebcamAsync(webcamDevice.Tag.ToString(), audioDevice.Tag.ToString());
                 PopulateVideoDeviceProperties(MediaStreamType.VideoRecord, WebcamComboBox, true);
-
             }
             catch (UnauthorizedAccessException ex)
             {
@@ -501,8 +500,8 @@ namespace SimpleRecorder
         {
             var selected = (ColorTemperaturePreset)WbComboBox.SelectedItem;
             WbSlider.IsEnabled = (selected == ColorTemperaturePreset.Manual);
-            await mediaCapture.VideoDeviceController.WhiteBalanceControl.SetPresetAsync(selected);
 
+            await mediaCapture.VideoDeviceController.WhiteBalanceControl.SetPresetAsync(selected);
         }
 
         private async void WbSlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
@@ -547,6 +546,9 @@ namespace SimpleRecorder
                     "Directory not found or not enough permissions");
 
                 await dialog.ShowAsync();
+
+                button.IsChecked = false;
+                return;
             }
 
             var requestSuspensionExtension = new ExtendedExecutionForegroundSession();
