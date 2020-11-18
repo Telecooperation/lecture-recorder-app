@@ -199,8 +199,19 @@ namespace SimpleRecorder
             // load default storage path
             if (!string.IsNullOrEmpty(settings.StorageFolder))
             {
-                FolderName.Text = settings.StorageFolder;
-                storageFolder = await StorageFolder.GetFolderFromPathAsync(settings.StorageFolder);
+                try
+                {
+                    storageFolder = await StorageFolder.GetFolderFromPathAsync(settings.StorageFolder);
+                    FolderName.Text = settings.StorageFolder;
+                }
+                catch
+                {
+                    var dialog = new MessageDialog(
+                    "Previous storage directory does not exist anymore. Please select a new directory.",
+                    "Directory not found or not enough permissions");
+
+                    await dialog.ShowAsync();
+                }
             }
 
             // set first webcam device
@@ -524,6 +535,20 @@ namespace SimpleRecorder
                 return;
             }
 
+            // check storage folder permissions
+            try
+            {
+                var files = await storageFolder.GetFilesAsync();
+            }
+            catch
+            {
+                var dialog = new MessageDialog(
+                    "The selected storage directory does not exist anymore or is not accessable. Please select a new directory.",
+                    "Directory not found or not enough permissions");
+
+                await dialog.ShowAsync();
+            }
+
             var requestSuspensionExtension = new ExtendedExecutionForegroundSession();
             requestSuspensionExtension.Reason = ExtendedExecutionForegroundReason.Unspecified;
             var requestExtensionResult = await requestSuspensionExtension.RequestExtensionAsync();
@@ -788,7 +813,7 @@ namespace SimpleRecorder
 
             await LoadSettings();
 
-            await InitAudioMeterAsync();
+            //await InitAudioMeterAsync();
         }
 
         private async void BtnFolderPicker_Click(object sender, RoutedEventArgs e)
