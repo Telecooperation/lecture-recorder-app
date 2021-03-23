@@ -62,7 +62,8 @@
     <GenerateTestArtifacts>True</GenerateTestArtifacts>
     <AppxBundlePlatforms>x86</AppxBundlePlatforms>
     <HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
-    <PackageCertificateThumbprint>C4D512BFDC7C45F9A69F52EDE4E38349ADF04EC4</PackageCertificateThumbprint>
+    <PackageCertificateThumbprint>2B73B8EAAA82B3208D4177C56CC4FC52688C7352</PackageCertificateThumbprint>
+    <PackageCertificateKeyFile>Recorder_TemporaryKey.pfx</PackageCertificateKeyFile>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
     <AppxBundle>Always</AppxBundle>

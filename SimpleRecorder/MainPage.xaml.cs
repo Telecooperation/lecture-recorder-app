@@ -394,30 +394,38 @@ namespace SimpleRecorder
 
         private async void WebcamComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            var selectedItem = (sender as ComboBox).SelectedItem as ComboBoxItem;
-            var encodingProperties = (selectedItem.Tag as StreamPropertiesHelper).EncodingProperties;
-            await mediaCapture.VideoDeviceController.SetMediaStreamPropertiesAsync(MediaStreamType.VideoRecord, encodingProperties);
-
-            SetExposureControls();
-            SetWhiteBalanceControl();
-
-            // load settings
-            var settings = AppSettingsContainer.GetCachedSettings();
-
-            if (ExposureAutoCheckBox.Visibility == Visibility.Visible && ExposureSlider.Visibility == Visibility.Visible)
+            try
             {
-                ExposureSlider.Value = settings.WebcamExposure;
-                ExposureAutoCheckBox.IsChecked = settings.WebcamExposureAuto;
+                var selectedItem = (sender as ComboBox).SelectedItem as ComboBoxItem;
+                var encodingProperties = (selectedItem.Tag as StreamPropertiesHelper).EncodingProperties;
+                await mediaCapture.VideoDeviceController.SetMediaStreamPropertiesAsync(MediaStreamType.VideoRecord, encodingProperties);
+
+                SetExposureControls();
+                SetWhiteBalanceControl();
+
+                // load settings
+                var settings = AppSettingsContainer.GetCachedSettings();
+
+                if (ExposureAutoCheckBox.Visibility == Visibility.Visible && ExposureSlider.Visibility == Visibility.Visible)
+                {
+                    ExposureSlider.Value = settings.WebcamExposure;
+                    ExposureAutoCheckBox.IsChecked = settings.WebcamExposureAuto;
+                }
+
+                if (WbSlider.Visibility == Visibility.Visible)
+                {
+                    WbSlider.Value = settings.WebcamWhiteBalance;
+                }
+
+                if (WbAutoCheckBox.Visibility == Visibility.Visible)
+                {
+                    WbAutoCheckBox.IsChecked = settings.WebcamWhiteBalanceAuto;
+                }
             }
-
-            if (WbSlider.Visibility == Visibility.Visible)
+            catch (Exception ex)
             {
-                WbSlider.Value = settings.WebcamWhiteBalance;
-            }
-
-            if (WbAutoCheckBox.Visibility == Visibility.Visible)
-            {
-                WbAutoCheckBox.IsChecked = settings.WebcamWhiteBalanceAuto;
+                var msg = new MessageDialog("The device is not ready.");
+                await msg.ShowAsync();
             }
         }
 
@@ -434,7 +442,7 @@ namespace SimpleRecorder
                 await InitWebcamAsync(webcamDevice.Tag.ToString(), audioDevice.Tag.ToString());
                 PopulateVideoDeviceProperties(MediaStreamType.VideoRecord, WebcamComboBox, true);
             }
-            catch (UnauthorizedAccessException ex)
+            catch (Exception ex)
             {
                 var msg = new MessageDialog("Unauthorized access to video and audio recording. Please change setting in Windows settings.");
                 await msg.ShowAsync();
