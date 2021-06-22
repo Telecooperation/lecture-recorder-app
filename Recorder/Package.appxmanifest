@@ -12,7 +12,7 @@
   <Identity
     Name="a541741c-d2f0-4311-99df-fdeb8e31d2bb"
     Publisher="CN=Alexander Seeliger"
-    Version="2.1.0.0" />
+    Version="2.1.1.0" />
 
   <Properties>
     <DisplayName>Recorder</DisplayName>
@@ -36,11 +36,11 @@
       <uap:VisualElements
         DisplayName="TK Screen Recorder"
         Description="Recorder"
-        BackgroundColor="transparent"
+        BackgroundColor="#9c1926"
         Square150x150Logo="Images\Square150x150Logo.png"
         Square44x44Logo="Images\Square44x44Logo.png">
         <uap:DefaultTile Wide310x150Logo="Images\Wide310x150Logo.png"  Square71x71Logo="Images\SmallTile.png" Square310x310Logo="Images\LargeTile.png"/>
-        <uap:SplashScreen Image="Images\SplashScreen.png" />
+        <uap:SplashScreen Image="Images\SplashScreen.png"  BackgroundColor="#9c1926"/>
       </uap:VisualElements>
       <Extensions>
         <uap:Extension Category="windows.appService">
