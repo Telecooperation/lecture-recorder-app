@@ -12,7 +12,7 @@
   <Identity
     Name="a541741c-d2f0-4311-99df-fdeb8e31d2bb"
     Publisher="CN=Alexander Seeliger"
-    Version="1.0.0.0" />
+    Version="2.1.0.0" />
 
   <Properties>
     <DisplayName>Recorder</DisplayName>

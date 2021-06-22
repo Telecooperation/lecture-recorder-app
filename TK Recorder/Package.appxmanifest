@@ -10,7 +10,7 @@
   <Identity
     Name="d867848f-9859-485a-b7d0-ae3c9b636428"
     Publisher="CN=Alexander Seeliger"
-    Version="1.0.0.0" />
+    Version="2.1.0.0" />
 
   <mp:PhoneIdentity PhoneProductId="d867848f-9859-485a-b7d0-ae3c9b636428" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
