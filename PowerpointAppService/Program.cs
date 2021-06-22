@@ -1,5 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using Windows.ApplicationModel.AppService;
 using Windows.Foundation.Collections;
 
@@ -20,7 +24,7 @@ namespace PowerpointAppService
             // publish the app service and load powerpoint connector
             InitializeAppServiceConnection();
             InitializePowerpoint();
-            
+
             // block exit
             appServiceExit.WaitOne();
         }
